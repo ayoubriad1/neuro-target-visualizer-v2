@@ -1,0 +1,27 @@
+# Python virtual environment (do NOT commit — rebuilt from requirements.txt)
+.venv/
+venv/
+env/
+
+# Python caches / build
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Logs / temp render artifacts
+*.log
+_*.py
+_test_*.png
+_*.png
+
+# Streamlit — keep config.toml (theme), ignore secrets only
+.streamlit/secrets.toml
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

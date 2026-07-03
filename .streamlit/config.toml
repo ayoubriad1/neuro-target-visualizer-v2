@@ -1,0 +1,11 @@
+[theme]
+# Bright, brain-inspired palette — soft lavender-gray on near-white.
+base = "light"
+primaryColor = "#8A6FC4"
+backgroundColor = "#F7F7FB"
+secondaryBackgroundColor = "#ECEAF6"
+textColor = "#2D2A3A"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false

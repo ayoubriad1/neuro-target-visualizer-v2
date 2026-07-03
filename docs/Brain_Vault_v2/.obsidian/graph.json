@@ -1,0 +1,47 @@
+{
+  "collapse-filter": true,
+  "search": "-path:\".obsidian\"",
+  "showTags": false,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "file:\"Neuro-Target Visualizer\"",
+      "color": { "a": 1, "rgb": 16766720 }
+    },
+    {
+      "query": "path:\"Regions\"",
+      "color": { "a": 1, "rgb": 16744192 }
+    },
+    {
+      "query": "path:\"Systems\"",
+      "color": { "a": 1, "rgb": 3065014 }
+    },
+    {
+      "query": "path:\"Neurotransmitters\"",
+      "color": { "a": 1, "rgb": 15224220 }
+    },
+    {
+      "query": "path:\"Concepts\"",
+      "color": { "a": 1, "rgb": 6076508 }
+    },
+    {
+      "query": "path:\"Code\"",
+      "color": { "a": 1, "rgb": 4886754 }
+    }
+  ],
+  "collapse-display": false,
+  "showArrow": false,
+  "textFadeMultiplier": -0.5,
+  "nodeSizeMultiplier": 1.35,
+  "lineSizeMultiplier": 1,
+  "collapse-forces": false,
+  "centerStrength": 0.4,
+  "repelStrength": 13,
+  "linkStrength": 0.85,
+  "linkDistance": 220,
+  "scale": 0.35,
+  "close": false
+}
