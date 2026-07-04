@@ -89,7 +89,7 @@ Install **Python 3.13** (3.11+ also works) from
   → **Download ZIP**, then unzip it.
 - **Or with git:**
   ```bash
-  git clone https://github.com/ayoubriad1/neuro-target-visualizer-v2.git
+  git clone https://github.com/ayoubriad1/neuroviz-v2.git
   ```
 
 Dependencies install themselves the first time you launch (next section).
@@ -158,7 +158,7 @@ another port with `... streamlit run app.py --server.port 8502`.
 ## Project structure
 
 ```
-neuro-target-visualizer/
+neuroviz-v2/
 ├── app.py                 # Streamlit UI: theme, controls, view router, summary
 ├── visualization.py       # activation-volume builder + all renderers
 ├── brain_regions.py       # 25 regions → MNI coordinates
