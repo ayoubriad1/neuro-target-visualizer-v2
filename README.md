@@ -79,49 +79,48 @@ flowchart LR
 
 ## Installation
 
-### Prerequisites
-- **Python 3.13** recommended (3.11+ works)
-- **git** (to clone)
+### 1. Install Python
+Install **Python 3.13** (3.11+ also works) from
+[python.org/downloads](https://www.python.org/downloads/). On Windows, tick
+**"Add Python to PATH"** during setup.
 
-### Steps
+### 2. Get the code
+- **Easiest (no git):** on this GitHub page click the green **`< > Code`** button
+  → **Download ZIP**, then unzip it.
+- **Or with git:**
+  ```bash
+  git clone https://github.com/ayoubriad1/neuro-target-visualizer-v2.git
+  ```
 
-```bash
-git clone https://github.com/<your-username>/neuro-target-visualizer.git
-cd neuro-target-visualizer
-
-# create an isolated environment
-python -m venv .venv
-
-# Windows
-.venv\Scripts\python.exe -m pip install --upgrade pip
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-
-# macOS / Linux
-# source .venv/bin/activate
-# pip install --upgrade pip && pip install -r requirements.txt
-```
-
-The first run downloads the `fsaverage` brain-surface meshes (via nilearn) into a
-local cache — this happens once.
+Dependencies install themselves the first time you launch (next section).
 
 ---
 
 ## Launch
 
-**Windows — one click:** double-click **`start_app.bat`**. It creates the virtual
-environment and installs dependencies on first run, then opens the app.
+### Windows — no coding needed
+Open the project folder and **double-click `start_app.bat`**.
+On the **first run** it automatically builds a virtual environment and installs
+everything (a few minutes, one time), then opens the app in your browser. Later
+runs start in a few seconds. **To stop it, close the terminal window.**
 
-**Any OS — manual:**
-
+### Any OS — manual (command line)
 ```bash
-# Windows
-.venv\Scripts\python.exe -m streamlit run app.py
-# macOS / Linux
-streamlit run app.py
+# 1. create an isolated environment
+python -m venv .venv
+
+# 2. install dependencies
+.venv\Scripts\python.exe -m pip install -r requirements.txt      # Windows
+# source .venv/bin/activate && pip install -r requirements.txt   # macOS / Linux
+
+# 3. launch
+.venv\Scripts\python.exe -m streamlit run app.py                 # Windows
+# streamlit run app.py                                           # macOS / Linux
 ```
 
-The app opens at **http://localhost:8501**. To run a second copy on another port:
-`streamlit run app.py --server.port 8502`.
+The app opens at **http://localhost:8501**. The very first render also downloads
+the brain-surface meshes once (via nilearn) and caches them. Run a second copy on
+another port with `... streamlit run app.py --server.port 8502`.
 
 ---
 
