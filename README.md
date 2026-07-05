@@ -183,7 +183,15 @@ pip install -r requirements.lock.txt
 
 ## Usage
 
-1. In the **sidebar**, choose a **brain region** from the dropdown.
+1. In the **sidebar**, pick an **Input mode**:
+   - **Named region (atlas-verified)** — choose one of the 28 regions from the
+     dropdown (the default, recommended mode).
+   - **Exact MNI coordinates (advanced)** — for researchers who already know
+     their precise target (e.g. a DBS contact, or a peak coordinate reported
+     in a paper): type the X/Y/Z in mm directly. This stamps a single,
+     focused point exactly there instead of a whole-region mask, and — unlike
+     named regions — is **not** mirrored across the midline, since the point
+     was chosen on purpose and may be intentionally one-sided.
 2. Enter a **binding affinity** in `kcal/mol` (e.g. `-9.2`). More negative =
    stronger, more favourable binding.
 3. Click **➕ Add Region**. Repeat to add several regions; remove any with **✕**,
@@ -193,7 +201,8 @@ pip install -r requirements.lock.txt
 5. Tune the **Rendering** controls in the sidebar:
    - **Display threshold** — hide faint activation below a chosen intensity.
    - **Surface resolution** — `fsaverage5` (fast) → `fsaverage6` (sharp) → `fsaverage` (finest).
-   - **Inflated surface** — inflated (see into sulci) vs. pial (folded).
+   - **Color scheme** — the default warm gray→red palette, or a colorblind-safe
+     (viridis) alternative.
 6. Below the brain, read the **Binding Affinity Summary** (per-region bars +
    strength tags), the **Interpretation** (strongest site, distribution), and the
    **Methods & provenance** panel.

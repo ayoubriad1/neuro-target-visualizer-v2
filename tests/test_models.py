@@ -23,6 +23,13 @@ def test_make_region_entry():
     assert entry.name == "Thalamus"
     assert entry.kcal == -7.0
     assert entry.normalized_intensity == kcal_to_normalized(-7.0)
+    assert entry.coordinates is None
+
+
+def test_make_region_entry_with_exact_coordinates():
+    entry = make_region_entry("Custom (10, -20, 5)", -9.0, coordinates=(10.0, -20.0, 5.0))
+    assert entry.coordinates == (10.0, -20.0, 5.0)
+    assert entry.normalized_intensity == kcal_to_normalized(-9.0)
 
 
 def _contrast_ratio(hex1: str, hex2: str) -> float:

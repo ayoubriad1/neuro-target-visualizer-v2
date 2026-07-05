@@ -57,7 +57,7 @@ def render_main_view(regions: list[RegionEntry], view_mode: str, threshold: floa
     the static views (so it can be offered as a PNG download), or None for
     the two HTML/WebGL-based interactive views (nothing static to export).
     """
-    pairs = [(r.name, r.normalized_intensity) for r in regions]
+    pairs = [(r.name, r.normalized_intensity, r.coordinates) for r in regions]
 
     loader = st.empty()
     if view_mode == "Interactive 3D":

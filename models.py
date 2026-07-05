@@ -11,6 +11,13 @@ class RegionEntry:
     name: str
     kcal: float
     normalized_intensity: float  # 0-100, see kcal_to_normalized()
+    # Set only for the "exact MNI coordinates" advanced input mode (e.g. a
+    # DBS target or a paper-reported peak) - when present, visualization.py
+    # stamps a single Gaussian at this exact point instead of looking `name`
+    # up in the atlas/illustrative catalog, and does NOT mirror it across the
+    # midline (the whole point is that the user gave an exact, possibly
+    # unilateral, location on purpose).
+    coordinates: tuple[float, float, float] | None = None
 
 
 def kcal_to_normalized(kcal: float) -> float:
@@ -18,8 +25,12 @@ def kcal_to_normalized(kcal: float) -> float:
     return (abs(clamped) - abs(KCAL_MAX)) / (abs(KCAL_MIN) - abs(KCAL_MAX)) * 100.0
 
 
-def make_region_entry(name: str, kcal: float) -> RegionEntry:
-    return RegionEntry(name=name, kcal=kcal, normalized_intensity=kcal_to_normalized(kcal))
+def make_region_entry(
+    name: str, kcal: float, coordinates: tuple[float, float, float] | None = None
+) -> RegionEntry:
+    return RegionEntry(
+        name=name, kcal=kcal, normalized_intensity=kcal_to_normalized(kcal), coordinates=coordinates
+    )
 
 
 def strength_label(norm: float) -> tuple[str, str, str]:

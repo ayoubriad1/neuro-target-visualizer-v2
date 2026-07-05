@@ -15,8 +15,8 @@ def get_regions() -> list[RegionEntry]:
     return st.session_state.regions
 
 
-def add_region(name: str, kcal: float):
-    st.session_state.regions.append(make_region_entry(name, kcal))
+def add_region(name: str, kcal: float, coordinates: tuple[float, float, float] | None = None):
+    st.session_state.regions.append(make_region_entry(name, kcal, coordinates))
 
 
 def remove_region(index: int):

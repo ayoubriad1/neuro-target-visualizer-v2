@@ -103,10 +103,25 @@ def _compute_activation_array(regions_and_scores, sigma=6.0):
     sigma_vox = sigma / 2.0
     ii, jj, kk = np.mgrid[0:MNI_SHAPE[0], 0:MNI_SHAPE[1], 0:MNI_SHAPE[2]]
 
-    for name, score in regions_and_scores:
+    for item in regions_and_scores:
+        # Accepts (name, score) or (name, score, exact_coordinates) - the
+        # latter comes from the "exact MNI coordinates" advanced input mode.
+        name, score, *rest = item
+        exact_coords = rest[0] if rest else None
         if score <= 0:
             continue
         amplitude = score / 100.0
+
+        if exact_coords is not None:
+            # A user-supplied precise point (e.g. a DBS target or a
+            # paper-reported peak): stamp exactly there, and do NOT mirror
+            # across the midline - unlike the named-region fallback below,
+            # the whole point is that this location was chosen on purpose,
+            # possibly unilaterally.
+            x, y, z = exact_coords
+            _stamp_gaussian(volume, ii, jj, kk, x, y, z, amplitude, sigma_vox)
+            continue
+
         atlas_mask = get_region_mask(name)
         if atlas_mask is not None:
             volume += amplitude * atlas_mask
@@ -121,11 +136,19 @@ def _compute_activation_array(regions_and_scores, sigma=6.0):
 
 
 def create_activation_volume(regions_and_scores, sigma=6.0):
-    """Build the MNI152 activation volume: real atlas masks (see
-    atlas_regions.py) for regions that have one, illustrative Gaussian blobs
-    for the rest. The expensive per-region work is cached on
-    (regions_and_scores, sigma) so repeated Streamlit reruns with unchanged
-    inputs are instant instead of recomputing a 91x109x91 grid every time.
+    """Build the MNI152 activation volume. Each item is (name, score) or
+    (name, score, exact_coordinates):
+
+    - (name, score): real atlas mask (see atlas_regions.py) if `name` has
+      one, else an illustrative Gaussian blob mirrored across the midline.
+    - (name, score, exact_coordinates): a single Gaussian stamped exactly at
+      `exact_coordinates` (MNI mm), not mirrored - the advanced "exact
+      coordinates" input mode for a known precise target (e.g. a DBS
+      contact or a paper-reported peak).
+
+    The expensive per-region work is cached on (regions_and_scores, sigma) so
+    repeated Streamlit reruns with unchanged inputs are instant instead of
+    recomputing a 91x109x91 grid every time.
     """
     volume = _compute_activation_array(tuple(regions_and_scores), sigma)
     return nib.Nifti1Image(volume, MNI_AFFINE)

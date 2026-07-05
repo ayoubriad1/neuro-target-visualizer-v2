@@ -55,7 +55,12 @@ def build_user_prompt(regions: list[RegionEntry], atlas_sources: dict[str, str |
     lines = ["Selected regions and user-entered affinities:"]
     for r in regions:
         source = atlas_sources.get(r.name)
-        provenance = f"atlas-backed ({source})" if source else "illustrative point (no atlas)"
+        if source:
+            provenance = f"atlas-backed ({source})"
+        elif r.coordinates is not None:
+            provenance = f"user-specified exact MNI coordinate {r.coordinates}, not an atlas region"
+        else:
+            provenance = "illustrative point (no atlas)"
         lines.append(
             f"- {r.name}: {r.kcal:.1f} kcal/mol ({r.normalized_intensity:.0f}% normalized "
             f"intensity), region model: {provenance}"

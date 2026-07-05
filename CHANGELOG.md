@@ -149,14 +149,33 @@ versioned digital dataset, so they couldn't be tied to a real reference.
 - **Result: 28/28 regions are now atlas-backed — zero illustrative points
   remain.**
 
+## Advanced input: exact MNI coordinates
+
+**Problem**: whole-region atlas masks are more scientifically defensible than
+a single point, but they lose precision for a researcher who already knows
+exactly where they're targeting (e.g. a neurosurgeon planning DBS, or someone
+reproducing a specific peak coordinate from a paper) — a named region can't
+express "this one exact spot."
+
+- Added a second sidebar input mode, **"Exact MNI coordinates (advanced)"**,
+  alongside the default named-region picker: three X/Y/Z number inputs
+  (bounded to the MNI152 template extent) replace the region dropdown.
+- `RegionEntry` gained an optional `coordinates` field; when set,
+  `visualization.py` stamps a single Gaussian exactly there instead of
+  consulting the atlas/illustrative catalog by name, and — deliberately —
+  does **not** mirror it across the midline (unlike named regions), since an
+  exact coordinate was chosen on purpose and may be intentionally unilateral.
+- The AI interpretation prompt and the region chip/summary UI both handle
+  this case explicitly rather than mislabeling it as "illustrative."
+
 ---
 
 ## Numbers
 
 | Metric | Before | After |
 |---|---|---|
-| Tests | 0 | 52 (all passing, zero real network calls) |
-| `app.py` size | 587 lines, monolithic | ~40 lines, 12 focused modules |
+| Tests | 0 | 57 (all passing, zero real network calls) |
+| `app.py` size | 587 lines, monolithic | ~40 lines, 13 focused modules |
 | Ruff/mypy findings | unmeasured | 0 across all first-party modules |
 | Regions on a real cited atlas | 0 / 25 | 28 / 28 (0 illustrative) |
 | "3D Surface" repeat-render time | ~19-35s | ~0.1-1s |

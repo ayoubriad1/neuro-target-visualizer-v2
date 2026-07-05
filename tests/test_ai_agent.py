@@ -22,6 +22,14 @@ def test_build_user_prompt_labels_atlas_and_illustrative():
     assert "illustrative point (no atlas)" in prompt
 
 
+def test_build_user_prompt_labels_exact_coordinates():
+    regions = [make_region_entry("Custom (10, -20, 5)", -8.0, coordinates=(10.0, -20.0, 5.0))]
+    prompt = build_user_prompt(regions, {"Custom (10, -20, 5)": None})
+    assert "user-specified exact MNI coordinate" in prompt
+    assert "(10.0, -20.0, 5.0)" in prompt
+    assert "not an atlas region" in prompt
+
+
 def test_generate_interpretation_requires_api_key():
     with pytest.raises(AIAgentError, match="No API key"):
         generate_interpretation("Claude (Anthropic)", "", "claude-haiku-4-5-20251001", "prompt")

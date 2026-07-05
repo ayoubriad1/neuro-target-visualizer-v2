@@ -4,9 +4,13 @@ import streamlit as st
 from atlas_regions import get_atlas_source, is_atlas_backed
 from brain_regions import get_region_names
 from config import COLOR_SCHEMES, DEFAULT_COLOR_SCHEME
+from mni_space import MNI_X_RANGE, MNI_Y_RANGE, MNI_Z_RANGE
 from models import strength_label
 from state import add_region, clear_regions, get_regions, remove_region
 from styles import render_sidebar_brain_icon
+
+_INPUT_MODE_NAMED = "Named region (atlas-verified)"
+_INPUT_MODE_EXACT = "Exact MNI coordinates (advanced)"
 
 
 def render_sidebar() -> tuple[float, str, str]:
@@ -14,11 +18,40 @@ def render_sidebar() -> tuple[float, str, str]:
     with st.sidebar:
         render_sidebar_brain_icon()
         st.header("Add Brain Region")
-        region = st.selectbox("Brain Region", get_region_names())
-        if is_atlas_backed(region):
-            st.caption(f"✅ Atlas-backed — {get_atlas_source(region)}")
+
+        input_mode = st.radio(
+            "Input mode",
+            [_INPUT_MODE_NAMED, _INPUT_MODE_EXACT],
+            help="Named region: pick from the 28 atlas-verified regions below. "
+                 "Exact coordinates: for researchers who already know their precise "
+                 "target (e.g. a DBS contact or a paper-reported peak) - renders a "
+                 "focused point exactly there instead of a whole-region mask.",
+        )
+
+        coordinates = None
+        if input_mode == _INPUT_MODE_NAMED:
+            region = st.selectbox("Brain Region", get_region_names())
+            if is_atlas_backed(region):
+                st.caption(f"✅ Atlas-backed — {get_atlas_source(region)}")
+            else:
+                st.caption("⚠️ Illustrative point (no standard atlas available for this region)")
         else:
-            st.caption("⚠️ Illustrative point (no standard atlas available for this region)")
+            st.caption(
+                "Renders a single focused point at this exact MNI152 coordinate - "
+                "not tied to any atlas region, and **not** mirrored across the "
+                "midline (unlike named regions, since this location was chosen on "
+                "purpose and may be intentionally one-sided)."
+            )
+            col_x, col_y, col_z = st.columns(3)
+            x = col_x.number_input("X (mm)", min_value=MNI_X_RANGE[0], max_value=MNI_X_RANGE[1],
+                                   value=0.0, step=1.0, help="Negative = left, positive = right.")
+            y = col_y.number_input("Y (mm)", min_value=MNI_Y_RANGE[0], max_value=MNI_Y_RANGE[1],
+                                   value=0.0, step=1.0, help="Negative = posterior, positive = anterior.")
+            z = col_z.number_input("Z (mm)", min_value=MNI_Z_RANGE[0], max_value=MNI_Z_RANGE[1],
+                                   value=0.0, step=1.0, help="Negative = inferior, positive = superior.")
+            coordinates = (x, y, z)
+            region = f"Custom ({x:.0f}, {y:.0f}, {z:.0f})"
+
         kcal_score = st.number_input(
             "Binding Affinity (kcal/mol)",
             min_value=-15.0,
@@ -31,7 +64,7 @@ def render_sidebar() -> tuple[float, str, str]:
         )
 
         if st.button("➕ Add Region", width="stretch"):
-            add_region(region, kcal_score)
+            add_region(region, kcal_score, coordinates)
             st.rerun()
 
         st.divider()
