@@ -25,9 +25,14 @@ extend it toward measured, ground-truth-backed analysis.
 - **Packaging** — pinned dependencies (`requirements.lock.txt`), Docker, a
   self-bootstrapping Windows/macOS/Linux launcher, GitHub Actions CI
   (lint + type-check + tests), and an Obsidian documentation vault under `docs/`.
-- **Atlas-backed regions** — 19 of 25 regions now use a real, cited parcellation
-  mask (Harvard-Oxford cortical/subcortical, Pauli et al. 2017) instead of a
-  hand-placed point, fetched via `atlas_regions.py`. See "Region model" below.
+- **Atlas-backed regions** — **all 28 regions** now use a real, cited
+  parcellation mask (Harvard-Oxford cortical/subcortical, Pauli et al. 2017)
+  instead of a hand-placed point, fetched via `atlas_regions.py`. The 6
+  regions that used to be illustrative points (traced back to an older printed
+  stereotaxic atlas, not a citable digital dataset) were either upgraded to a
+  real atlas mask, renamed to their true anatomical equivalent, or dropped
+  entirely when no atlas existed at all — see "Region model" below and
+  `CHANGELOG.md`.
 - **Optional AI interpretation (BYOK)** — `ai_agent.py` / `ui_ai.py` call the
   user's own Claude (Anthropic) or ChatGPT (OpenAI) key, picked and entered in
   the sidebar — never bundled or paid for by this app. The prompt forbids
@@ -54,11 +59,11 @@ faked:
 2. **Measured ground truth.** Compare a predicted map against in-vivo PET
    receptor-density atlases, and quantify agreement with
    spatial-autocorrelation-preserving null models (spin tests).
-3. **Full atlas coverage.** 6 regions (Prefrontal Cortex DLPFC/VMPFC, Orbitofrontal
-   Cortex, Raphe Nuclei, Locus Coeruleus, Cerebellum) still have no standard,
-   openly-fetchable atlas mask and remain illustrative points — a finer
-   subcortical/brainstem atlas or a composite-label mapping for the prefrontal
-   subdivisions would close this gap.
+3. ~~**Full atlas coverage.**~~ **Done** — all 28 regions are now atlas-backed;
+   see "Region model" below. Raphe Nuclei, Locus Coeruleus, and Cerebellum
+   were dropped entirely (no standard, openly-fetchable atlas exists for any
+   of them); a dedicated brainstem or cerebellar atlas (e.g. the Diedrichsen
+   cerebellar atlas) could reintroduce them properly in the future.
 4. **Region interactivity.** Click a region to reveal the targets and affinities
    that drive it (depends on the molecule/affinity layer above).
 5. **Literature-grounded AI interpretation.** Upgrade the current single-call
@@ -71,11 +76,12 @@ faked:
 ## Notes
 
 - Coordinate space: MNI152, 2 mm (`91 × 109 × 91`).
-- Region model: 19/25 regions use a real atlas mask (`atlas_regions.py`:
+- Region model: 28/28 regions use a real atlas mask (`atlas_regions.py`:
   Harvard-Oxford cortical + subcortical, Pauli et al. 2017, resampled to this
-  grid where needed); the remaining 6 use a single illustrative MNI point →
-  Gaussian blob, mirrored across the midline (`brain_regions.py`).
-- Activation spread (σ, illustrative regions only): 12 mm for the surface views,
-  6 mm for glass/stat.
+  grid where needed). `brain_regions.py`'s illustrative MNI point → Gaussian
+  blob fallback (mirrored across the midline) is currently unused but kept as
+  infrastructure in case a future region has no atlas match.
+- Activation spread (σ, illustrative regions only - currently none): 12 mm for
+  the surface views, 6 mm for glass/stat.
 - Colormaps: `YlOrRd` (static/glass/stat) and a gray→red scale (interactive 3-D),
   both mapped to the same 0–100 % normalized intensity.

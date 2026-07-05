@@ -3,7 +3,7 @@ from models import make_region_entry
 
 
 def test_build_report_markdown_contains_key_sections():
-    regions = [make_region_entry("Thalamus", -9.2), make_region_entry("Cerebellum", -4.0)]
+    regions = [make_region_entry("Thalamus", -9.2), make_region_entry("Habenula", -4.0)]
     report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6",
                                    mpl_cmap="YlOrRd")
     assert "# Neuro-Target Affinity Visualizer" in report
@@ -11,7 +11,7 @@ def test_build_report_markdown_contains_key_sections():
     assert "## Interpretation" in report
     assert "## Methods & Provenance" in report
     assert "Thalamus" in report
-    assert "Cerebellum" in report
+    assert "Habenula" in report
     assert "-9.2" in report
 
 

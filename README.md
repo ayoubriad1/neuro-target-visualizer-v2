@@ -61,8 +61,8 @@ The model is fully rotatable — the same map viewed from above:
   a persistent **L/R orientation compass**, and one-click **camera presets**
   (Left/Right/Top/Front/Default) so you never lose your bearings after
   rotating freely.
-- **19/25 regions on real atlas masks** (Harvard-Oxford, Pauli et al. 2017) — see
-  [Scientific scope](#scientific-scope).
+- **28/28 regions on real, cited atlas masks** (Harvard-Oxford, Pauli et al.
+  2017) — no illustrative points remain. See [Scientific scope](#scientific-scope).
 - **Rendering controls** — display-threshold slider, surface resolution
   (`fsaverage5/6/full`), and a **colorblind-safe (viridis) color scheme** option
   alongside the default warm gray→red palette.
@@ -227,8 +227,8 @@ neuroviz-v2/
 ├── ai_agent.py            # optional BYOK LLM client (Claude / ChatGPT)
 ├── ui_ai.py               # sidebar config + trigger for the AI interpretation
 ├── visualization.py       # activation-volume builder + all renderers
-├── brain_regions.py       # 25 regions → MNI coordinates (illustrative fallback)
-├── atlas_regions.py       # 19/25 regions → real atlas masks (Harvard-Oxford, Pauli 2017)
+├── brain_regions.py       # illustrative-point fallback (currently empty - see below) + merged name list
+├── atlas_regions.py       # 28/28 regions → real atlas masks (Harvard-Oxford, Pauli 2017)
 ├── mni_space.py           # shared MNI152 2mm grid constants
 ├── requirements.txt       # Python dependencies (lower-bound pins)
 ├── requirements.lock.txt  # exact, hash-verified pins for reproducibility
@@ -301,25 +301,38 @@ This is a **visualization and intuition** tool. Affinity values are
 engine. The maps show **predicted localization and relative strength** — not
 measured receptor occupancy or in-vivo concentration.
 
-**Region model** — 19 of the 25 regions render on a real, cited parcellation
-mask (`atlas_regions.py`): Harvard-Oxford cortical/subcortical atlases and
-Pauli et al. (2017) for basal ganglia/midbrain nuclei. The remaining 6 (small
-brainstem nuclei, composite prefrontal subdivisions) have no standard
-openly-available atlas and stay as illustrative MNI points — the app labels
-each region "✅ Atlas-backed" or "⚠️ Illustrative" when you select it. See
-`ENHANCEMENT_REPORT.md` for exact citations and the remaining roadmap
-(PET-density ground truth, molecule input, spin tests).
+**Region model** — all 28 regions render on a real, cited parcellation mask
+(`atlas_regions.py`): Harvard-Oxford cortical/subcortical atlases and Pauli et
+al. (2017) for basal ganglia/midbrain nuclei. A handful of structures with no
+standard, openly-available atlas at all (raphe nuclei, locus coeruleus,
+cerebellum) were dropped from the region list entirely rather than kept as
+unverified illustrative points — the region picker still shows an
+"✅ Atlas-backed" badge per region (and would show "⚠️ Illustrative" if one
+were ever reintroduced). See `ENHANCEMENT_REPORT.md` for exact citations and
+the remaining roadmap (PET-density ground truth, molecule input, spin tests).
 
 ---
 
 ## Supported brain regions
 
-Striatum (Caudate / Putamen), Nucleus Accumbens, Prefrontal Cortex (DLPFC / VMPFC),
-Orbitofrontal Cortex, Anterior / Posterior Cingulate Cortex, Hippocampus, Amygdala,
-Thalamus, Hypothalamus, Substantia Nigra, Ventral Tegmental Area, Raphe Nuclei,
-Locus Coeruleus, Insula, Cerebellum, Primary Motor Cortex, Somatosensory Cortex,
-Visual Cortex (V1), Auditory Cortex, Temporal Pole, Parietal Cortex (SPL),
-Globus Pallidus.
+**28 regions, 100% backed by a real, cited atlas** (Harvard-Oxford, Pauli et
+al. 2017) — no illustrative/hand-placed points remain. See
+[Scientific scope](#scientific-scope) and `docs/AI_AGENT.md`'s sibling,
+`CHANGELOG.md`, for the migration history.
+
+Striatum (Caudate / Putamen), Nucleus Accumbens, Globus Pallidus, Hippocampus,
+Amygdala, Thalamus, Anterior / Posterior Cingulate Cortex, Insula,
+Orbitofrontal Cortex, Middle Frontal Gyrus, Frontal Medial Cortex, Frontal
+Pole, Precuneous Cortex, Angular Gyrus, Primary Motor Cortex, Somatosensory
+Cortex, Visual Cortex (V1), Auditory Cortex, Temporal Pole, Parietal Cortex
+(SPL), Hypothalamus, Substantia Nigra, Ventral Tegmental Area, Subthalamic
+Nucleus, Habenula, Ventral Pallidum.
+
+Dropped entirely (no standard, openly-fetchable atlas exists): the raphe
+nuclei, locus coeruleus, and cerebellum. "Prefrontal Cortex (DLPFC/VMPFC)"
+were functional labels with no single matching atlas region, so they were
+replaced by their real Harvard-Oxford anatomical equivalents (Middle Frontal
+Gyrus / Frontal Medial Cortex) instead of kept as unverified data.
 
 ---
 

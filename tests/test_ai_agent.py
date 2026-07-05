@@ -7,14 +7,18 @@ from models import make_region_entry
 
 
 def test_build_user_prompt_labels_atlas_and_illustrative():
-    regions = [make_region_entry("Thalamus", -9.0), make_region_entry("Cerebellum", -3.0)]
+    # "Some Illustrative Region" is a synthetic name for this test, not a real
+    # app region - every region currently in the app is atlas-backed, but
+    # build_user_prompt() must still label a hypothetical illustrative one
+    # correctly if brain_regions.py ever reintroduces one.
+    regions = [make_region_entry("Thalamus", -9.0), make_region_entry("Some Illustrative Region", -3.0)]
     prompt = build_user_prompt(regions, {
         "Thalamus": "Harvard-Oxford subcortical",
-        "Cerebellum": None,
+        "Some Illustrative Region": None,
     })
     assert "Thalamus" in prompt
     assert "atlas-backed (Harvard-Oxford subcortical)" in prompt
-    assert "Cerebellum" in prompt
+    assert "Some Illustrative Region" in prompt
     assert "illustrative point (no atlas)" in prompt
 
 

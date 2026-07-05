@@ -9,7 +9,7 @@ import sys
 
 import streamlit as st
 
-from atlas_regions import ATLAS_CITATIONS, ATLAS_REGIONS
+from atlas_regions import ATLAS_CITATIONS, ATLAS_REGIONS, get_atlas_source
 from brain_regions import get_region_names
 from config import DEFAULT_SIGMA, KCAL_MAX, KCAL_MIN, SURFACE_SIGMA
 from models import RegionEntry, strength_label
@@ -112,10 +112,36 @@ def _renderer_versions() -> str:
 
 
 def _methods_text(threshold: float, surf_mesh: str, mpl_cmap: str = "YlOrRd") -> str:
-    n_total = len(get_region_names())
+    all_names = get_region_names()
+    n_total = len(all_names)
     n_atlas = len(ATLAS_REGIONS)
     n_illustrative = n_total - n_atlas
-    illustrative_names = ", ".join(sorted(set(get_region_names()) - ATLAS_REGIONS))
+    illustrative_names = sorted(set(all_names) - ATLAS_REGIONS)
+
+    # Built dynamically from the actual region/source mapping (rather than a
+    # hardcoded list) so this table can't silently go stale the next time a
+    # region is added, renamed, or removed.
+    by_source: dict[str, list[str]] = {}
+    for name in sorted(ATLAS_REGIONS):
+        by_source.setdefault(get_atlas_source(name), []).append(name)
+    atlas_table = "\n".join(
+        f"| {ATLAS_CITATIONS[source]} | {', '.join(names)} |"
+        for source, names in sorted(by_source.items())
+    )
+
+    if illustrative_names:
+        illustrative_note = f"""
+The remaining **{n_illustrative} regions** ({", ".join(illustrative_names)})
+have no standard, openly-available atlas (small brainstem nuclei, or composite
+functional subdivisions spanning multiple atlas labels) and stay as
+hand-curated illustrative MNI points, mirrored across the midline — the
+sidebar and region picker flag which kind each selected region is."""
+    else:
+        illustrative_note = """
+**All** regions currently offered by this tool are atlas-backed — none are
+illustrative points. A small number of structures with no standard,
+openly-fetchable atlas (e.g. raphe nuclei, locus coeruleus, cerebellum) were
+dropped from the region list entirely rather than kept as unverified data."""
 
     return f"""
 | Item | Value |
@@ -138,16 +164,10 @@ atlas** (masks fetched at build/run time, not redrawn by hand):
 
 | Atlas | Regions |
 |---|---|
-| {ATLAS_CITATIONS["Harvard-Oxford cortical"]} | Anterior/Posterior Cingulate, Insula, Primary Motor, Somatosensory, Visual (V1), Auditory, Temporal Pole, Parietal (SPL) |
-| {ATLAS_CITATIONS["Harvard-Oxford subcortical"]} | Thalamus, Striatum (Caudate/Putamen), Globus Pallidus, Hippocampus, Amygdala, Nucleus Accumbens |
-| {ATLAS_CITATIONS["Pauli et al. 2017"]} | Substantia Nigra, Ventral Tegmental Area, Hypothalamus |
+{atlas_table}
+{illustrative_note}
 
-The remaining **{n_illustrative} regions** ({illustrative_names})
-have no standard, openly-available atlas (small brainstem nuclei, or composite
-prefrontal subdivisions spanning multiple atlas labels) and stay as
-hand-curated illustrative MNI points, mirrored across the midline — the
-sidebar and region picker flag which kind each selected region is. See
-**`ENHANCEMENT_REPORT.md`** for the full upgrade plan.
+See **`ENHANCEMENT_REPORT.md`** for exact citations and the remaining roadmap.
 """
 
 

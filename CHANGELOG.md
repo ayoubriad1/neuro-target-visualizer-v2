@@ -116,15 +116,48 @@ to general neuroscience knowledge, with an explicit, prompt-enforced
 prohibition on inventing citations — this app never bundles or pays for API
 access on anyone's behalf.
 
+## Data quality pass — 100% atlas-backed regions
+
+**Problem**: of the original 25 regions, 6 were still illustrative points with
+no citable source — traced back to an older printed stereotaxic atlas, not a
+versioned digital dataset, so they couldn't be tied to a real reference.
+
+- Removed 3 regions with no standard, openly-fetchable atlas at all: **Raphe
+  Nuclei, Locus Coeruleus, Cerebellum**. Dropped entirely rather than kept as
+  unverified data.
+- Upgraded **Orbitofrontal Cortex** to a real atlas mask (Harvard-Oxford's
+  "Frontal Orbital Cortex" is a direct match) instead of removing it.
+- Replaced the functional labels **"Prefrontal Cortex (DLPFC)"** and
+  **"(VMPFC)"** — neither corresponds to a single atlas region — with their
+  real Harvard-Oxford anatomical equivalents, **Middle Frontal Gyrus** and
+  **Frontal Medial Cortex**, rather than keep a label nothing in any atlas
+  actually matches.
+- Added **8 new atlas-backed regions** that were already available in the
+  atlases this app already fetches, just not yet exposed: Subthalamic
+  Nucleus, Habenula, Ventral Pallidum (Pauli et al. 2017); Frontal Pole,
+  Precuneous Cortex, Angular Gyrus (Harvard-Oxford cortical).
+- Generalized `atlas_regions.py`'s cortical mapping to union multiple atlas
+  divisions into one region (previously only the subcortical/Pauli paths
+  supported this), and refactored `get_region_names()` so a region can exist
+  purely as an atlas entry with no `brain_regions.py` fallback point at all —
+  `brain_regions.py` is now an empty illustrative-fallback dict, kept as
+  infrastructure for any future region with no atlas match.
+- The Methods & Provenance panel's atlas/region table is now built
+  dynamically from the actual region→source mapping instead of a hardcoded
+  list, so it can't silently go stale the next time a region changes (as the
+  previous version had, twice).
+- **Result: 28/28 regions are now atlas-backed — zero illustrative points
+  remain.**
+
 ---
 
 ## Numbers
 
 | Metric | Before | After |
 |---|---|---|
-| Tests | 0 | 43 (all passing, zero real network calls) |
+| Tests | 0 | 52 (all passing, zero real network calls) |
 | `app.py` size | 587 lines, monolithic | ~40 lines, 12 focused modules |
 | Ruff/mypy findings | unmeasured | 0 across all first-party modules |
-| Regions on a real cited atlas | 0 / 25 | 19 / 25 |
+| Regions on a real cited atlas | 0 / 25 | 28 / 28 (0 illustrative) |
 | "3D Surface" repeat-render time | ~19-35s | ~0.1-1s |
 | CI | none | GitHub Actions (lint + type-check + test) |

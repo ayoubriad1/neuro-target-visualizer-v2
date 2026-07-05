@@ -15,11 +15,13 @@ else in this app:
   ganglia / midbrain structures absent from Harvard-Oxford (substantia nigra,
   VTA, hypothalamus). Published at 1mm and resampled here to 2mm.
 
-Regions with no standard, openly-fetchable atlas (small brainstem nuclei like
-the raphe nuclei / locus coeruleus, and composite prefrontal subdivisions like
-DLPFC/VMPFC/OFC that don't correspond to a single atlas label) are
-intentionally NOT covered here; brain_regions.py keeps those as illustrative
-points, and get_region_mask() returns None for them so callers can fall back.
+A few structures have no standard, openly-fetchable atlas at all (small
+brainstem nuclei like the raphe nuclei / locus coeruleus, and the cerebellum,
+which needs its own dedicated parcellation) and have been dropped from the
+region list entirely rather than kept as unverified illustrative points -
+see brain_regions.py's module docstring for the reasoning. get_region_mask()
+returns None for any name it doesn't recognize, so callers can still fall
+back gracefully if an illustrative-only region is ever reintroduced.
 """
 import nibabel as nib
 import numpy as np
@@ -39,17 +41,30 @@ _HO_SUBCORTICAL_PAIRS = {
     "Nucleus Accumbens": ("Left Accumbens", "Right Accumbens"),
 }
 
-# region name -> Harvard-Oxford cortical label (already bilateral in one label)
+# region name -> Harvard-Oxford cortical label(s) to union (already bilateral
+# in each label). Tuples of >1 label combine the atlas's separate
+# anterior/posterior divisions into one region.
 _HO_CORTICAL_LABELS = {
-    "Anterior Cingulate Cortex": "Cingulate Gyrus, anterior division",
-    "Posterior Cingulate Cortex": "Cingulate Gyrus, posterior division",
-    "Insula": "Insular Cortex",
-    "Primary Motor Cortex": "Precentral Gyrus",
-    "Somatosensory Cortex": "Postcentral Gyrus",
-    "Visual Cortex (V1)": "Intracalcarine Cortex",
-    "Auditory Cortex": "Heschl's Gyrus (includes H1 and H2)",
-    "Temporal Pole": "Temporal Pole",
-    "Parietal Cortex (SPL)": "Superior Parietal Lobule",
+    "Anterior Cingulate Cortex": ("Cingulate Gyrus, anterior division",),
+    "Posterior Cingulate Cortex": ("Cingulate Gyrus, posterior division",),
+    "Insula": ("Insular Cortex",),
+    "Primary Motor Cortex": ("Precentral Gyrus",),
+    "Somatosensory Cortex": ("Postcentral Gyrus",),
+    "Visual Cortex (V1)": ("Intracalcarine Cortex",),
+    "Auditory Cortex": ("Heschl's Gyrus (includes H1 and H2)",),
+    "Temporal Pole": ("Temporal Pole",),
+    "Parietal Cortex (SPL)": ("Superior Parietal Lobule",),
+    # Replaces the old illustrative "Orbitofrontal Cortex" point with a real mask.
+    "Orbitofrontal Cortex": ("Frontal Orbital Cortex",),
+    # Replace the old illustrative "Prefrontal Cortex (DLPFC/VMPFC)" points:
+    # DLPFC/VMPFC are functional labels that don't correspond to a single atlas
+    # region, so these use the real Harvard-Oxford anatomical names instead of
+    # a functional label nothing in the atlas actually matches.
+    "Middle Frontal Gyrus": ("Middle Frontal Gyrus",),
+    "Frontal Medial Cortex": ("Frontal Medial Cortex",),
+    "Frontal Pole": ("Frontal Pole",),
+    "Precuneous Cortex": ("Precuneous Cortex",),
+    "Angular Gyrus": ("Angular Gyrus",),
 }
 
 # region name -> Pauli 2017 label(s) to union (already bilateral / midline)
@@ -57,6 +72,9 @@ _PAULI_LABELS = {
     "Substantia Nigra": ("SNc", "SNr"),
     "Ventral Tegmental Area": ("VTA",),
     "Hypothalamus": ("HTH",),
+    "Subthalamic Nucleus": ("STH",),
+    "Habenula": ("HN",),
+    "Ventral Pallidum": ("VeP",),
 }
 
 ATLAS_REGIONS = set(_HO_SUBCORTICAL_PAIRS) | set(_HO_CORTICAL_LABELS) | set(_PAULI_LABELS)
@@ -128,7 +146,9 @@ def get_region_mask(name):
 
     if name in _HO_CORTICAL_LABELS:
         data, labels = _load_harvard_oxford("cort-maxprob-thr25-2mm")
-        mask = _label_mask(data, labels, _HO_CORTICAL_LABELS[name])
+        mask = np.zeros(MNI_SHAPE, dtype=np.float64)
+        for label_name in _HO_CORTICAL_LABELS[name]:
+            mask = np.maximum(mask, _label_mask(data, labels, label_name))
         return _smooth_binary_mask(mask)
 
     if name in _PAULI_LABELS:
