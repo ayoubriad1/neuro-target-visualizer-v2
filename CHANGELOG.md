@@ -1,0 +1,130 @@
+# Changelog — engineering session summary
+
+This document summarizes every improvement made to the Neuro-Target Affinity
+Visualizer during this engineering session, organized by phase in the order they
+were done. See [`ENHANCEMENT_REPORT.md`](ENHANCEMENT_REPORT.md) for the
+scientific scope and remaining roadmap, and
+[`docs/AI_AGENT.md`](docs/AI_AGENT.md) for a deep dive on the AI interpretation
+feature specifically.
+
+---
+
+## Phase 1 — Performance, reliability & correctness
+
+**Problem**: no caching anywhere (every Streamlit rerun recomputed everything from
+scratch, up to ~20-35s per render), unpinned dependencies, and two real bugs
+hiding in the original code.
+
+- Added `@st.cache_data` / `@st.cache_resource` across every rendering function in
+  `visualization.py`. Measured impact: the "3D Surface" view went from **~19-35s
+  to ~0.1-1s** on repeat renders with unchanged inputs.
+- Generated [`requirements.lock.txt`](requirements.lock.txt) (exact, hash-verified
+  pins via `pip-compile`) alongside the original loose `requirements.txt`.
+- Fixed a real crash bug: `app.py` referenced an undefined `surf_inflate`
+  variable that raised `NameError` every time the "Methods & provenance" panel
+  was opened.
+- Added a warning banner when a selected region is a deep/subcortical structure
+  that would otherwise render as invisible on the cortical-surface views
+  ("Interactive 3D", "3D Surface") — prevents mistaking "not rendered" for "no
+  binding".
+- Fixed inconsistent hemisphere handling: illustrative (non-atlas) regions are
+  now mirrored across the midline by default, since systemic ligand binding is
+  normally bilateral — the original code stamped a single, arbitrarily-sided
+  point per region.
+- Cleaned up all ruff/mypy findings; added Docker, `start_app.sh` (macOS/Linux
+  launcher), dev tooling (`pyproject.toml`, `requirements-dev.txt`), and the
+  **first test suite** (7 tests — there were previously zero).
+
+## Phase 2 — Real anatomical atlases
+
+**Problem**: all 25 brain regions were single illustrative MNI points with no
+cited source, stamped with a Gaussian blob — not defensible beyond casual
+visualization.
+
+- New module [`atlas_regions.py`](atlas_regions.py): fetches and caches real,
+  published parcellation atlases via nilearn — Harvard-Oxford
+  cortical + subcortical, and Pauli et al. (2017) for basal ganglia/midbrain
+  nuclei absent from Harvard-Oxford (substantia nigra, VTA, hypothalamus).
+- **19 of 25 regions** now render on a real anatomical mask instead of a
+  hand-placed point; the remaining 6 (small brainstem nuclei, composite
+  prefrontal subdivisions) have no standard openly-available atlas and stay
+  illustrative — clearly labeled as such in the UI ("✅ Atlas-backed" vs
+  "⚠️ Illustrative") and in the Methods & provenance panel, with exact
+  citations.
+- New shared module [`mni_space.py`](mni_space.py) to avoid a circular import
+  between `visualization.py` and `atlas_regions.py`.
+- 13 new tests verifying mask shape/range/bilaterality for every atlas-backed
+  region.
+
+## Phase 3 — Architecture, CI, palette, export
+
+**Problem**: `app.py` was a 587-line monolith mixing theme CSS, business logic,
+state management, and rendering — untestable and hard to extend.
+
+- Split into 8 single-responsibility modules: `config.py`, `styles.py`,
+  `models.py` (typed `RegionEntry` dataclass replacing bare positional tuples),
+  `state.py`, `ui_sidebar.py`, `ui_views.py`, `interpretation.py`, plus a
+  ~40-line `app.py` orchestrator.
+- Added GitHub Actions CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
+  ruff + mypy + pytest on Python 3.11/3.12, with dependency and atlas-download
+  caching.
+- Added a **colorblind-safe color scheme** (viridis) alongside the original warm
+  gray→red palette, selectable per-render, applied consistently across all 5
+  view modes.
+- Added **export**: high-res PNG download for the 3 static views, and a
+  self-contained Markdown report (affinity table + interpretation +
+  methods/provenance) for any view.
+- Replaced the deprecated `st.components.v1.html` with `st.iframe`, and
+  `use_container_width` with `width="stretch"` (both flagged for removal by
+  Streamlit itself in the server logs).
+
+## Design pass
+
+- Persistent **"L"/"R" orientation labels** on the Interactive 3D view, so
+  orientation stays legible after free rotation.
+- One-click **camera presets** (Left/Right/Top/Front/Default) on the
+  Interactive 3D view, reusing the same angles as the static "3D Surface"
+  montage — purely client-side (Plotly `updatemenus`), no server rerun.
+- `initial_sidebar_state="expanded"` so the sidebar (the app's only interaction
+  point) is never hidden behind an unlabeled arrow on first load.
+- Restyled the sidebar "Active Regions" list as compact cards matching the main
+  "Affinity Summary" cards (same strength badges, same visual language) —
+  previously plain text, visually inconsistent with the rest of the app.
+- Restyled the "View Mode" radio group as a segmented pill control, and gave
+  `st.expander` panels card-style chrome (border, radius, soft shadow), instead
+  of default Streamlit chrome.
+
+## Accessibility pass
+
+- Audited the strength-badge colors ("Weak"/"Moderate"/"Strong"/"Very strong")
+  against WCAG AA contrast (4.5:1 for small text) using the actual
+  relative-luminance formula, not eyeballing: **"Weak" failed outright (2.09:1)**,
+  "Strong" and "Moderate" fell just short (4.08 and 3.20). Adjusted the palette
+  minimally (same hues, same gradient order) so all four now clear 4.5:1, with a
+  regression test (`test_strength_label_meets_wcag_aa_contrast`) to catch any
+  future palette change that reintroduces the problem.
+- Added `prefers-reduced-motion: reduce` support: the rotating-brain icon,
+  shimmer effect, and loading animations are disabled for users with that
+  OS/browser preference set (WCAG 2.3.3, vestibular-disorder consideration).
+
+## AI scientific interpretation (BYOK)
+
+See [`docs/AI_AGENT.md`](docs/AI_AGENT.md) for the full write-up. In short: an
+optional, bring-your-own-key LLM call (Claude or ChatGPT, user's choice,
+configured from the sidebar) that generates a short interpretation constrained
+to general neuroscience knowledge, with an explicit, prompt-enforced
+prohibition on inventing citations — this app never bundles or pays for API
+access on anyone's behalf.
+
+---
+
+## Numbers
+
+| Metric | Before | After |
+|---|---|---|
+| Tests | 0 | 43 (all passing, zero real network calls) |
+| `app.py` size | 587 lines, monolithic | ~40 lines, 12 focused modules |
+| Ruff/mypy findings | unmeasured | 0 across all first-party modules |
+| Regions on a real cited atlas | 0 / 25 | 19 / 25 |
+| "3D Surface" repeat-render time | ~19-35s | ~0.1-1s |
+| CI | none | GitHub Actions (lint + type-check + test) |

@@ -8,16 +8,32 @@ extend it toward measured, ground-truth-backed analysis.
 - **Five view modes** — Interactive 3-D (Plotly), 3-D Surface, Glass Brain,
   Stat Map, Interactive Slices.
 - **Interactive 3-D brain** — a rotatable WebGL model on the folded pial surface
-  (real gyri/sulci) with a gray→red intensity map; a light, near-white cortex for
-  clarity.
+  (real gyri/sulci) with a gray→red intensity map, a persistent L/R orientation
+  compass, and one-click camera presets (Left/Right/Top/Front/Default); a
+  light, near-white cortex for clarity. (Always rendered on the pial surface —
+  there is no inflated/pial toggle in the current UI.)
 - **Higher-resolution surface** — `fsaverage6` by default, selectable up to full
-  `fsaverage`; inflated ↔ pial toggle.
+  `fsaverage`.
 - **User controls** — a display-threshold slider threaded through every renderer;
-  surface-resolution and inflate options.
+  surface-resolution option; a colorblind-safe (viridis) color scheme alongside
+  the default warm gray→red palette.
 - **Binding-affinity summary** with per-region strength tags, a written
-  interpretation, and a methods / provenance panel.
-- **Packaging** — pinned dependencies, a self-bootstrapping Windows launcher, and
-  an Obsidian documentation vault under `docs/`.
+  interpretation, an optional AI-generated interpretation (see below), and a
+  methods / provenance panel.
+- **Export** — download the active static figure as PNG, or a full Markdown
+  report (affinity table + interpretation + methods).
+- **Packaging** — pinned dependencies (`requirements.lock.txt`), Docker, a
+  self-bootstrapping Windows/macOS/Linux launcher, GitHub Actions CI
+  (lint + type-check + tests), and an Obsidian documentation vault under `docs/`.
+- **Atlas-backed regions** — 19 of 25 regions now use a real, cited parcellation
+  mask (Harvard-Oxford cortical/subcortical, Pauli et al. 2017) instead of a
+  hand-placed point, fetched via `atlas_regions.py`. See "Region model" below.
+- **Optional AI interpretation (BYOK)** — `ai_agent.py` / `ui_ai.py` call the
+  user's own Claude (Anthropic) or ChatGPT (OpenAI) key, picked and entered in
+  the sidebar — never bundled or paid for by this app. The prompt forbids
+  inventing citations/PMIDs and asks for an explicit confidence label. This is
+  a single constrained LLM call from general knowledge, **not**
+  literature-grounded RAG — see the roadmap item below for that larger design.
 
 ## Scientific scope
 
@@ -38,15 +54,28 @@ faked:
 2. **Measured ground truth.** Compare a predicted map against in-vivo PET
    receptor-density atlases, and quantify agreement with
    spatial-autocorrelation-preserving null models (spin tests).
-3. **Atlas parcellations.** Move from fixed MNI point coordinates to per-parcel
-   scoring with selectable atlases (e.g. Glasser, Schaefer, Desikan-Killiany).
+3. **Full atlas coverage.** 6 regions (Prefrontal Cortex DLPFC/VMPFC, Orbitofrontal
+   Cortex, Raphe Nuclei, Locus Coeruleus, Cerebellum) still have no standard,
+   openly-fetchable atlas mask and remain illustrative points — a finer
+   subcortical/brainstem atlas or a composite-label mapping for the prefrontal
+   subdivisions would close this gap.
 4. **Region interactivity.** Click a region to reveal the targets and affinities
    that drive it (depends on the molecule/affinity layer above).
+5. **Literature-grounded AI interpretation.** Upgrade the current single-call
+   AI interpretation (general knowledge only) into a RAG pipeline: retrieve
+   from PubMed (NCBI E-utilities), Semantic Scholar, and OpenAlex, ground each
+   claim in a retrieved passage with an inline citation, verify citation
+   support with an entailment check, and calibrate the confidence score from
+   source agreement instead of the model's own self-report.
 
 ## Notes
 
 - Coordinate space: MNI152, 2 mm (`91 × 109 × 91`).
-- Region model: 25 regions as single MNI points → Gaussian blobs.
-- Activation spread (σ): 12 mm for the surface views, 6 mm for glass/stat.
+- Region model: 19/25 regions use a real atlas mask (`atlas_regions.py`:
+  Harvard-Oxford cortical + subcortical, Pauli et al. 2017, resampled to this
+  grid where needed); the remaining 6 use a single illustrative MNI point →
+  Gaussian blob, mirrored across the midline (`brain_regions.py`).
+- Activation spread (σ, illustrative regions only): 12 mm for the surface views,
+  6 mm for glass/stat.
 - Colormaps: `YlOrRd` (static/glass/stat) and a gray→red scale (interactive 3-D),
   both mapped to the same 0–100 % normalized intensity.

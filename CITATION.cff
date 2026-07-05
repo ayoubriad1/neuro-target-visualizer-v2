@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "NeuroViz: Neuro-Target Affinity Visualizer"
+authors:
+  - family-names: "Riad"
+    given-names: "Ayoub"
+version: "2.0.0"
+date-released: "2026-07-05"
+license: MIT
+repository-code: "https://github.com/ayoubriad1/neuroviz-v2"
