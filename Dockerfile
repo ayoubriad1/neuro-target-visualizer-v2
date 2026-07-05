@@ -1,14 +1,31 @@
 FROM python:3.11-slim
 
-# System deps required by nilearn/matplotlib/kaleido (headless Chromium for PNG export).
-# libgconf-2-4 was deliberately dropped: it's an obsolete GConf2 library that
-# no longer exists in Debian Bookworm's repos (the base of python:3.11-slim)
-# and made `apt-get install` fail outright - it isn't needed by kaleido 1.x
-# anyway, which bundles its own headless Chrome rather than relying on it.
+# System deps required by nilearn/matplotlib and by headless Chrome itself
+# (kaleido >=1.0 no longer bundles its own Chromium - it downloads a real
+# Chrome-for-Testing build via `plotly_get_chrome` below, which needs these
+# shared libraries present to actually run headless). libgconf-2-4 is
+# deliberately absent: it's an obsolete GConf2 library removed from Debian
+# Bookworm's repos (the base of python:3.11-slim), and headless Chrome
+# doesn't need it anyway.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libglib2.0-0 \
         libnss3 \
         libfontconfig1 \
+        libatk1.0-0 \
+        libatk-bridge2.0-0 \
+        libcups2 \
+        libdrm2 \
+        libxkbcommon0 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxrandr2 \
+        libgbm1 \
+        libasound2 \
+        libpango-1.0-0 \
+        libpangocairo-1.0-0 \
+        libcairo2 \
+        fonts-liberation \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -23,6 +40,12 @@ WORKDIR $HOME/app
 
 COPY --chown=appuser:appuser requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
+
+# kaleido >=1.0 requires a real Chrome install (it no longer bundles one) and
+# ships this helper to fetch a compatible Chrome-for-Testing build - without
+# it, any PNG export via kaleido (the "3D Surface" view) fails at runtime with
+# "RuntimeError: Kaleido requires Google Chrome to be installed."
+RUN plotly_get_chrome -y
 
 COPY --chown=appuser:appuser . .
 

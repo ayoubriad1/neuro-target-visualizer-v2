@@ -94,8 +94,15 @@ git push hf main
 - **Space is asleep (slow first load)** — expected on the free tier after
   inactivity; the next visitor's request wakes it, no action needed.
 - **Build fails with a "cache miss" message on the mesh/atlas pre-warm step**
-  — this is expected and handled: that `RUN` step is allowed to fail (Hugging
-  Face's build sandbox has no network access), and the build continues. If the
-  build still fails there, check the "Logs" tab for the actual error above the
-  cache-miss line; it usually points to a real dependency or syntax problem
-  instead.
+  — this is expected and handled: that `RUN` step is allowed to fail, and the
+  build continues. If the build still fails there, check the "Logs" tab for
+  the actual error above the cache-miss line; it usually points to a real
+  dependency or syntax problem instead.
+- **"3D Surface" view crashes at runtime with `RuntimeError: Kaleido requires
+  Google Chrome to be installed`** — `kaleido` >= 1.0 no longer bundles its own
+  Chromium; the `Dockerfile` runs `plotly_get_chrome -y` at build time to fetch
+  one. If you see this in your own fork/modification of the Dockerfile, make
+  sure that line is still present (it must run *after* `pip install`, since
+  the `plotly_get_chrome` command is installed by the `kaleido` package
+  itself) and that the Chrome runtime libraries (`libatk1.0-0`,
+  `libgbm1`, etc. — see the `apt-get install` list) are present.
