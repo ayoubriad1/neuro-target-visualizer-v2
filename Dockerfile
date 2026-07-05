@@ -1,10 +1,13 @@
 FROM python:3.11-slim
 
-# System deps required by nilearn/matplotlib/kaleido (headless Chromium for PNG export)
+# System deps required by nilearn/matplotlib/kaleido (headless Chromium for PNG export).
+# libgconf-2-4 was deliberately dropped: it's an obsolete GConf2 library that
+# no longer exists in Debian Bookworm's repos (the base of python:3.11-slim)
+# and made `apt-get install` fail outright - it isn't needed by kaleido 1.x
+# anyway, which bundles its own headless Chrome rather than relying on it.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libglib2.0-0 \
         libnss3 \
-        libgconf-2-4 \
         libfontconfig1 \
         curl \
     && rm -rf /var/lib/apt/lists/*
