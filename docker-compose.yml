@@ -1,0 +1,13 @@
+services:
+  neuroviz:
+    build: .
+    ports:
+      - "7860:7860"
+    volumes:
+      # Persist the nilearn dataset cache across container restarts/rebuilds
+      - nilearn-cache:/home/appuser/nilearn_data
+    environment:
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+volumes:
+  nilearn-cache:

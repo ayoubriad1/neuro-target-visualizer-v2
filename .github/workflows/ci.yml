@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Cache nilearn atlas downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/nilearn_data
+          key: nilearn-data-v1
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Type check (mypy)
+        run: mypy app.py visualization.py brain_regions.py atlas_regions.py mni_space.py config.py styles.py models.py state.py interpretation.py ui_sidebar.py ui_views.py ai_agent.py ui_ai.py
+
+      - name: Test (pytest)
+        run: pytest tests/ -v
