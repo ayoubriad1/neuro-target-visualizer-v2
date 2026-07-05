@@ -59,9 +59,15 @@ password, an **access token** (not your account password):
 
 Hugging Face automatically builds the `Dockerfile` on push. Watch progress
 under the **"Logs"** tab of your Space page. First build takes a while
-(installing nilearn/scipy/matplotlib/plotly + pre-downloading brain-surface
-meshes and atlas data — budget 5-10 minutes). Subsequent pushes rebuild
-faster thanks to Docker layer caching.
+(installing nilearn/scipy/matplotlib/plotly — budget 5-10 minutes). Subsequent
+pushes rebuild faster thanks to Docker layer caching.
+
+Hugging Face Spaces' build environment blocks network access during the build
+itself, so the `Dockerfile`'s best-effort pre-download of brain-surface
+meshes/atlas data is skipped there (it doesn't fail the build - see the
+Dockerfile's comment). That download simply happens on the **first real
+visitor's request** instead, adding a one-time delay to that first render
+(subsequent renders and visitors are fast, same as running locally).
 
 Once the build finishes, the app is live at your Space's URL — no further
 action needed, and no login required for anyone visiting that link.
@@ -87,3 +93,9 @@ git push hf main
   the Space directly.
 - **Space is asleep (slow first load)** — expected on the free tier after
   inactivity; the next visitor's request wakes it, no action needed.
+- **Build fails with a "cache miss" message on the mesh/atlas pre-warm step**
+  — this is expected and handled: that `RUN` step is allowed to fail (Hugging
+  Face's build sandbox has no network access), and the build continues. If the
+  build still fails there, check the "Logs" tab for the actual error above the
+  cache-miss line; it usually points to a real dependency or syntax problem
+  instead.

@@ -162,11 +162,14 @@ another port with `... streamlit run app.py --server.port 8502`.
 ```bash
 docker compose up --build
 ```
-Builds a container with the exact dependency set, pre-downloads the brain-surface
-meshes and atlas data at build time (so the first render is instant and works
-offline), and serves the app at **http://localhost:7860**. (Port 7860 is also
-what [Hugging Face Spaces](docs/DEPLOY_HUGGINGFACE.md) expects, so the same
-image deploys there unchanged.)
+Builds a container with the exact dependency set and, network permitting,
+pre-downloads the brain-surface meshes and atlas data at build time (so the
+first render is instant and works offline). Serves the app at
+**http://localhost:7860**. (Port 7860 is also what
+[Hugging Face Spaces](docs/DEPLOY_HUGGINGFACE.md) expects, so the same image
+deploys there unchanged — some build environments, including HF Spaces, block
+network access during the build itself, in which case this download simply
+happens lazily on the first real request instead.)
 
 ### Exact reproducibility
 `requirements.txt` only pins lower bounds. For a fully pinned, hash-verified
@@ -234,7 +237,7 @@ neuroviz-v2/
 ├── tests/                 # tests for models/brain_regions/atlas_regions/visualization
 ├── start_app.bat          # Windows launcher (self-bootstraps the venv)
 ├── start_app.sh           # macOS/Linux launcher (same behaviour)
-├── Dockerfile             # reproducible container, pre-warms the mesh cache
+├── Dockerfile             # reproducible container, best-effort mesh/atlas pre-warm
 ├── docker-compose.yml
 ├── .env.example           # API keys for the optional AI interpretation agent
 ├── CITATION.cff           # how to cite this tool
