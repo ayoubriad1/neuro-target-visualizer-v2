@@ -5,8 +5,10 @@ from atlas_regions import get_atlas_source, is_atlas_backed
 from brain_regions import get_region_names
 from config import COLOR_SCHEMES, DEFAULT_COLOR_SCHEME
 from docking_import import parse_csv, parse_vina_score
+from gene_region import get_gene_citation, suggest_regions
 from mni_space import MNI_X_RANGE, MNI_Y_RANGE, MNI_Z_RANGE
 from models import strength_label
+from rcsb_lookup import fetch_pdb_metadata
 from receptor_atlas import HANSEN_2022_CITATION, RECEPTOR_NAMES, get_receptor_citation
 from state import add_region, clear_regions, get_regions, remove_region
 from styles import render_sidebar_brain_icon
@@ -29,7 +31,10 @@ def _render_docking_import():
             "Bulk-add regions from a CSV/TSV (`region,kcal` columns - "
             "`name`/`affinity`/`kcal_mol` also accepted, plus optional "
             "`x,y,z` for exact coordinates), or pull the top score out of a "
-            "Vina result file instead of retyping it."
+            "Vina result file instead of retyping it. Optional `pdb_id`, "
+            "`protein`/`gene` and `ligand` columns fuse a multi-protein x "
+            "multi-ligand screening batch into one sheet — see 🔎 lookup below "
+            "for resolving a bare PDB ID first."
         )
 
         csv_file = st.file_uploader("CSV / TSV batch", type=["csv", "tsv", "txt"], key="csv_import")
@@ -37,10 +42,14 @@ def _render_docking_import():
             result = parse_csv(csv_file.getvalue().decode("utf-8", errors="replace"))
             if result.rows:
                 st.success(f"{len(result.rows)} valid row(s) ready to import.")
-                st.dataframe(
-                    [{"Region": r.name, "kcal/mol": r.kcal} for r in result.rows],
-                    width="stretch", hide_index=True,
-                )
+                has_metadata = any(r.pdb_id or r.protein or r.ligand for r in result.rows)
+                preview = [{"Region": r.name, "kcal/mol": r.kcal} for r in result.rows]
+                if has_metadata:
+                    for row, r in zip(preview, result.rows, strict=True):
+                        row["PDB ID"] = r.pdb_id or ""
+                        row["Protein/Gene"] = r.protein or ""
+                        row["Ligand"] = r.ligand or ""
+                st.dataframe(preview, width="stretch", hide_index=True)
             for err in result.errors:
                 st.warning(f"⚠️ {err}")
             if result.rows and st.button(
@@ -49,6 +58,46 @@ def _render_docking_import():
                 for r in result.rows:
                     add_region(r.name, r.kcal, r.coordinates)
                 st.rerun()
+
+        st.divider()
+        st.markdown("**🔎 PDB ID → gene & suggested region** _(via RCSB)_")
+        st.caption(
+            "RCSB's own database has no brain-region field at all (verified "
+            "against its live API) - it only knows structural/genetic facts. "
+            "This looks up the gene/UniProt ID for a PDB entry automatically, "
+            "then suggests candidate regions from a small hand-curated "
+            "table (same sources as receptor weighting below) - a starting "
+            "hypothesis to confirm yourself, never an auto-pick."
+        )
+        pdb_query = st.text_input("PDB ID", placeholder="e.g. 6CM4", key="pdb_lookup_query")
+        if st.button("Look up", key="pdb_lookup_btn") and pdb_query.strip():
+            meta = fetch_pdb_metadata(pdb_query)
+            if meta is None:
+                st.warning(
+                    "⚠️ No metadata found - check the PDB ID, or RCSB may be "
+                    "unreachable right now."
+                )
+            else:
+                st.markdown(
+                    f"**{meta.pdb_id}** — {meta.title or '_no title_'}  \n"
+                    f"Organism: {meta.organism or 'n/a'} · "
+                    f"Gene: {meta.gene or 'n/a'} · "
+                    f"UniProt: {meta.uniprot_id or 'n/a'}"
+                )
+                candidates = suggest_regions(meta.gene) if meta.gene else None
+                if candidates:
+                    st.success(
+                        f"Suggested region(s) for **{meta.gene}**: "
+                        f"{', '.join(candidates)}  \n"
+                        f"Source: {get_gene_citation(meta.gene)}"
+                    )
+                elif meta.gene:
+                    st.info(
+                        f"'{meta.gene}' isn't in this app's curated gene→region "
+                        "table - pick the region yourself from anatomical/"
+                        "pharmacological knowledge of this target."
+                    )
+        st.divider()
 
         vina_file = st.file_uploader(
             "Vina result (.pdbqt or log)", type=["pdbqt", "txt", "log"], key="vina_import"

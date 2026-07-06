@@ -50,6 +50,7 @@ The model is fully rotatable — the same map viewed from above:
 - [Importing docking results](#importing-docking-results)
 - [Spatial correspondence test](#spatial-correspondence-test)
 - [Circuit propagation (experimental)](#circuit-propagation-experimental)
+- [Functional & symptomatic interpretation](#functional--symptomatic-interpretation)
 - [Scientific scope](#scientific-scope)
 - [Supported brain regions](#supported-brain-regions)
 - [Troubleshooting](#troubleshooting)
@@ -262,9 +263,12 @@ neuroviz-v2/
 ├── atlas_regions.py       # 28/28 regions → real atlas masks (Harvard-Oxford, Pauli 2017)
 ├── receptor_atlas.py      # 18 PET receptor/transporter density maps (Hansen et al. 2022, via neuromaps)
 ├── spatial_stats.py       # spatial correspondence permutation test (affinity vs. receptor density)
-├── docking_import.py      # CSV bulk import + AutoDock Vina result score extraction
+├── docking_import.py      # CSV bulk import (+ optional pdb_id/protein/ligand) + AutoDock Vina score extraction
+├── gene_region.py         # curated gene/receptor -> atlas region lookup (suggestion only, never auto-picked)
+├── rcsb_lookup.py         # best-effort RCSB PDB ID -> gene/UniProt metadata fetch (data.rcsb.org)
+├── region_function.py     # curated per-region functional domains + stimulate/inhibit literature summary
 ├── connectome.py          # circuit-propagation estimate + diffusion simulation (real functional connectivity)
-├── connectome_viz.py      # animated Plotly network view for the diffusion simulation
+├── connectome_viz.py      # animated Plotly network view + directed arrows from the main affected region
 ├── mni_space.py           # shared MNI152 2mm grid constants
 ├── requirements.txt       # Python dependencies (lower-bound pins)
 ├── requirements.lock.txt  # exact, hash-verified pins for reproducibility
@@ -387,6 +391,29 @@ Instead of clicking **➕ Add Region** by hand for every result, the sidebar's
    affinity) are reported individually and skipped rather than failing the
    whole import; valid rows are previewed before you confirm with
    **➕ Import N region(s)**.
+
+   Optional `pdb_id`, `protein` (or `gene`) and `ligand` columns fuse a
+   whole multi-protein × multi-ligand screening batch into one sheet instead
+   of splitting it across notes — see
+   [`examples/docking_results_with_pdb_sample.csv`](examples/docking_results_with_pdb_sample.csv):
+   ```csv
+   pdb_id,protein,ligand,region,kcal
+   6CM4,DRD2,Compound_A,Striatum (Caudate),-9.1
+   6CM4,DRD2,Compound_A,Nucleus Accumbens,-9.1
+   5TGZ,CNR1,Compound_A,Amygdala,-7.8
+   ```
+   These three columns are provenance metadata only (traceability, shown in
+   the preview table) — `region` is still required, on purpose. **RCSB has
+   no brain-region field at all** (checked directly against its live Data
+   API): it only exposes structural/genetic facts — gene symbol, UniProt
+   accession, organism. So if a row is missing `region` and its `protein`/
+   `gene` matches one of 18 curated receptor targets (`gene_region.py`, same
+   sources as [receptor weighting](#receptor-density-weighting)), the error
+   message *suggests* candidate region(s) — it never auto-assigns one, the
+   same judgment-call principle as the Vina import below. For a sheet that
+   only has a `pdb_id` column, the **🔎 PDB ID → gene & suggested region
+   (via RCSB)** tool right below the CSV uploader resolves the gene
+   automatically (a real RCSB API call) and shows the same suggestion.
 2. **A single AutoDock Vina result file** (the `.pdbqt` pose output, or the
    plain-text log/table Vina prints) — the best (top-ranked) score is
    extracted and prefilled into the **Binding Affinity** field below, so you
@@ -452,6 +479,38 @@ directly-selected source region(s) in gold, specifically so it reads as an
 estimate, not a measurement. **"Step" is an abstract diffusion iteration,
 not real elapsed time** - it has no defined relationship to seconds,
 minutes, or a real pharmacokinetic timescale.
+
+On top of that, gold **arrows** point from your single strongest-affinity
+region — "the main affected region" — to every other region it has real,
+above-threshold functional connectivity to, so that relationship reads as
+directional at a glance instead of just "these nodes are connected".
+Functional connectivity is itself symmetric; "directed" here means *drawn
+outward from the main region for legibility*, not a claim about anatomical
+or causal direction.
+
+---
+
+## Functional & symptomatic interpretation
+
+A **"🧭 Functional & symptomatic interpretation"** section appears near the
+bottom of the results (`region_function.py`) translating *which regions* into
+*what stimulating or inhibiting them is classically associated with* —
+motor/motricity, spatiotemporal cognition & navigation, emotional regulation
+& mood, reward & motivation, sensory processing, executive/cognitive
+control, and autonomic/homeostatic regulation. Each of this app's 28 atlas
+regions has a hand-curated entry citing a specific lesion study, direct
+electrical-stimulation mapping paper, or DBS trial (e.g. amygdala →
+LeDoux 2000 / Adolphs et al. 1994; subthalamic nucleus → Limousin et al. 1998
+/ Frank et al. 2007).
+
+**This is not a deterministic prediction.** "Stimulated"/"inhibited" means
+the region's *net activity* went up or down, from whatever cause (a drug, a
+lesion, a DBS setting) — not a claim about whether the neurons involved are
+excitatory or inhibitory. A real compound's actual effect additionally
+depends on whether it's an agonist or antagonist at that site, and on
+dose/exposure. Treat every line as a hypothesis to weigh, not a guarantee —
+and check [circuit propagation](#circuit-propagation-experimental) above it
+for how an effect might indirectly reach domains you didn't directly select.
 
 ---
 

@@ -274,18 +274,68 @@ binding all three directly).
   data. Explicitly labeled: **"step" is an abstract diffusion iteration,
   not real elapsed time.**
 
+## Docking metadata, RCSB lookup, and functional interpretation
+
+**Problem**: a real multi-protein × multi-ligand screening batch needs to
+stay traceable (which PDB structure / target / molecule produced which
+score), a bare PDB ID sheet had no way to suggest which brain region a
+target engages, and the app could say *where* a compound is predicted to
+act but not yet *what stimulating or inhibiting that site is classically
+associated with* at the symptom/domain level.
+
+- **Docking metadata columns** ([`docking_import.py`](docking_import.py)):
+  optional `pdb_id`, `protein`/`gene` and `ligand` CSV columns are parsed
+  and shown in the import preview table (pure provenance - not stored on
+  the resulting region entry, not used by any renderer) so a batch spanning
+  several targets and molecules stays traceable in one sheet instead of
+  split across notes. See
+  [`examples/docking_results_with_pdb_sample.csv`](examples/docking_results_with_pdb_sample.csv).
+- **Gene → region suggestions** ([`gene_region.py`](gene_region.py)): a
+  hand-curated lookup from a gene symbol/receptor alias to its principal
+  atlas region(s) (reusing the same 18 PET-imaging targets and citations as
+  `receptor_atlas.py`), surfaced only as a *suggestion* in the "missing
+  region" error message when a CSV row has a `protein`/`gene` value but no
+  `region` - never auto-assigned, since region assignment stays a
+  pharmacology judgment call, not something this app decides for you.
+- **RCSB PDB lookup** ([`rcsb_lookup.py`](rcsb_lookup.py)): a new sidebar
+  tool resolves a bare PDB ID to its gene symbol/UniProt accession via a
+  real `data.rcsb.org` API call, then feeds that gene straight into the
+  same region-suggestion table above. RCSB's own API was checked directly
+  and confirmed to have no anatomical/brain-region field at all - this
+  stops at gene identity by design, exactly matching how a Vina score has
+  no inherent region association either.
+- **Functional & symptomatic interpretation**
+  ([`region_function.py`](region_function.py)): a hand-curated profile for
+  all 28 atlas regions - functional domain(s) (motor, spatiotemporal,
+  emotional, reward, sensory, executive, autonomic), and what the
+  literature (lesion studies, direct stimulation mapping, DBS trials)
+  reports for *increased* vs. *decreased* regional activity, each with a
+  specific citation. Rendered in its own **"🧭 Functional & symptomatic
+  interpretation"** section, explicitly labeled as the classically-reported
+  association, not a deterministic prediction (a real compound's effect
+  also depends on agonist/antagonist action and dose).
+- **Directed arrows** on the circuit-propagation animation
+  ([`connectome_viz.py`](connectome_viz.py)): gold arrows now point from
+  the single strongest-affinity selected region to every other region it
+  has real, above-threshold functional connectivity to - functional
+  connectivity is itself symmetric, so "directed" here means drawn
+  outward from that region for legibility, not an anatomical/causal
+  directionality claim (stated explicitly in the UI caption).
+
 ---
 
 ## Numbers
 
 | Metric | Before | After |
 |---|---|---|
-| Tests | 0 | 121 (all passing) |
-| `app.py` size | 587 lines, monolithic | ~40 lines, 17 focused modules |
+| Tests | 0 | 164 (all passing) |
+| `app.py` size | 587 lines, monolithic | ~40 lines, 20 focused modules |
 | Ruff/mypy findings | unmeasured | 0 across all first-party modules |
 | Regions on a real cited atlas | 0 / 25 | 28 / 28 (0 illustrative) |
+| Regions with a curated functional profile | 0 | 28 / 28 (motor, emotional, reward, etc.) |
 | Receptor/transporter density maps available | 0 | 18 (real PET data, optional weighting) |
-| Docking result import formats | 0 (manual entry only) | CSV/TSV batch + AutoDock Vina |
-| Circuit propagation | none | real 28x28 functional connectivity matrix |
+| Docking result import formats | 0 (manual entry only) | CSV/TSV batch (+ PDB/gene/ligand metadata) + AutoDock Vina |
+| Gene → region lookup | none | 18 curated targets + live RCSB PDB→gene resolution |
+| Circuit propagation | none | real 28x28 functional connectivity matrix + directed arrows |
 | "3D Surface" repeat-render time | ~19-35s | ~0.1-1s |
 | CI | none | GitHub Actions (lint + type-check + test) |

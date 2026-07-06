@@ -5,6 +5,7 @@ from interpretation import (
     render_affinity_summary,
     render_connectome_propagation,
     render_export_buttons,
+    render_functional_interpretation,
     render_interpretation,
     render_methods_panel,
     render_spatial_test,
@@ -46,6 +47,7 @@ if regions:
     render_interpretation(regions)
     render_connectome_propagation(regions)
     render_spatial_test(regions, receptor_weight)
+    render_functional_interpretation(regions)
     render_ai_interpretation(regions, ai_config, receptor_weight)
     render_methods_panel(threshold, surf_mesh, mpl_cmap, receptor_weight)
     render_export_buttons(fig, regions, threshold, surf_mesh, mpl_cmap, receptor_weight)

@@ -1,4 +1,4 @@
-from interpretation import build_report_markdown
+from interpretation import _functional_interpretation_text, build_report_markdown
 from models import make_region_entry
 
 
@@ -76,3 +76,43 @@ def test_build_report_markdown_omits_circuit_propagation_for_coordinates_only():
     regions = [make_region_entry("Custom (0, 0, 0)", -9.0, coordinates=(0.0, 0.0, 0.0))]
     report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6")
     assert "Circuit Propagation" not in report
+
+
+def test_build_report_markdown_includes_functional_interpretation():
+    regions = [make_region_entry("Primary Motor Cortex", -9.0)]
+    report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6")
+    assert "Functional & Symptomatic Interpretation" in report
+    assert "Motor / motricity" in report
+    assert "Penfield & Boldrey" in report
+
+
+def test_build_report_markdown_omits_functional_interpretation_for_coordinates_only():
+    regions = [make_region_entry("Custom (0, 0, 0)", -9.0, coordinates=(0.0, 0.0, 0.0))]
+    report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6")
+    assert "Functional & Symptomatic Interpretation" not in report
+
+
+def test_functional_interpretation_text_lists_domains_and_effects():
+    regions = [make_region_entry("Amygdala", -8.0)]
+    text = _functional_interpretation_text(regions)
+    assert "Emotional regulation & mood" in text
+    assert "If stimulated" in text
+    assert "If inhibited" in text
+    assert "LeDoux" in text
+
+
+def test_functional_interpretation_text_ranks_strongest_region_first():
+    regions = [
+        make_region_entry("Amygdala", -3.0),
+        make_region_entry("Primary Motor Cortex", -13.0),
+    ]
+    text = _functional_interpretation_text(regions)
+    # Per-region headers are bolded region names - check their relative order
+    # there specifically, since the domain summary above them (sorted
+    # alphabetically by domain name) mentions region names in a different order.
+    assert text.index("**Primary Motor Cortex**") < text.index("**Amygdala**")
+
+
+def test_functional_interpretation_text_empty_for_coordinates_only():
+    regions = [make_region_entry("Custom (0, 0, 0)", -9.0, coordinates=(0.0, 0.0, 0.0))]
+    assert _functional_interpretation_text(regions) == ""

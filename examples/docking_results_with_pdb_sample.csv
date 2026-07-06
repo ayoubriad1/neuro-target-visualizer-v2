@@ -1,0 +1,5 @@
+pdb_id,protein,ligand,region,kcal,pose_rank
+6CM4,DRD2,Compound_A,Striatum (Caudate),-9.1,1
+6CM4,DRD2,Compound_A,Nucleus Accumbens,-9.1,1
+5TGZ,CNR1,Compound_A,Amygdala,-7.8,1
+5TGZ,CNR1,Compound_B,Amygdala,-6.4,1

@@ -85,6 +85,55 @@ def test_parse_csv_partial_success_reports_both_good_and_bad_rows():
     assert len(result.errors) == 2
 
 
+def test_parse_csv_carries_pdb_protein_ligand_metadata():
+    text = "pdb_id,protein,ligand,region,kcal\n6CM4,DRD2,Compound_A,Striatum (Caudate),-9.1\n"
+    result = parse_csv(text)
+    assert result.errors == []
+    row = result.rows[0]
+    assert row.pdb_id == "6CM4"
+    assert row.protein == "DRD2"
+    assert row.ligand == "Compound_A"
+
+
+def test_parse_csv_metadata_columns_are_optional():
+    text = "region,kcal\nThalamus,-9.2\n"
+    result = parse_csv(text)
+    assert result.errors == []
+    row = result.rows[0]
+    assert row.pdb_id is None
+    assert row.protein is None
+    assert row.ligand is None
+
+
+def test_parse_csv_gene_column_alias():
+    text = "gene,region,kcal\nDRD2,Striatum (Caudate),-9.1\n"
+    result = parse_csv(text)
+    assert result.errors == []
+    assert result.rows[0].protein == "DRD2"
+
+
+def test_parse_csv_missing_region_suggests_candidates_for_known_gene():
+    text = "protein,kcal\nDRD2,-9.1\n"
+    result = parse_csv(text)
+    assert result.rows == []
+    assert "typically associated with" in result.errors[0]
+    assert "Striatum (Caudate)" in result.errors[0]
+
+
+def test_parse_csv_missing_region_no_suggestion_for_unknown_gene():
+    text = "protein,kcal\nNotARealGene,-9.1\n"
+    result = parse_csv(text)
+    assert result.rows == []
+    assert "isn't in this app's gene/receptor lookup table" in result.errors[0]
+
+
+def test_parse_csv_missing_region_no_protein_column_unchanged_message():
+    text = "region,kcal\n,-9.1\n"
+    result = parse_csv(text)
+    assert result.rows == []
+    assert result.errors[0] == "Line 2: missing region name (and no x/y/z given)."
+
+
 def test_parse_vina_score_from_pdbqt_remark():
     text = "MODEL 1\nREMARK VINA RESULT:    -8.3      0.000      0.000\nATOM ...\n"
     assert parse_vina_score(text) == -8.3

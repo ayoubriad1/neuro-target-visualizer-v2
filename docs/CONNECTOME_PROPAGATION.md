@@ -130,6 +130,17 @@ instances sit well off to either side - the node position is the average
 location of a bilateral mask, not a claim that the structure itself sits at
 the midline.
 
+**Directed arrows**: gold arrows (a line + cone arrowhead per connection,
+`connectome_viz._relation_traces`) are drawn from the single strongest
+directly-selected region ("the main affected region") to every other region
+it has real, above-threshold functional connectivity to - so that
+relationship reads as directional at a glance instead of just "these nodes
+are connected" (which the fainter static edges already show for the whole
+network). Functional connectivity is symmetric/undirected by construction;
+"directed" here means *drawn as emanating from the main region for
+legibility*, not an anatomical or causal directionality claim - stated
+explicitly in the UI caption next to the animation controls.
+
 ## Adding more data / improving this later
 
 - Re-run `scripts/compute_connectivity_matrix.py` with more subjects (up to

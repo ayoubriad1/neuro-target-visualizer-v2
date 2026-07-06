@@ -50,6 +50,23 @@ extend it toward measured, ground-truth-backed analysis.
   connectivity (a precomputed matrix from real fMRI data, see
   `docs/CONNECTOME_PROPAGATION.md`), rendered as its own clearly-labeled
   section - a linear estimate, explicitly not a validated circuit simulation.
+  The animated network view (`connectome_viz.py`) additionally draws gold
+  arrows from the strongest-affinity region to every other region it has
+  real, above-threshold functional connectivity to.
+- **Docking metadata + gene/PDB lookup** — `docking_import.py`'s CSV import
+  accepts optional `pdb_id`/`protein`/`ligand` columns for traceability
+  across a multi-target × multi-ligand screening batch; `gene_region.py`
+  hand-curates gene/receptor → principal atlas region(s) as a suggestion
+  (never auto-assigned); `rcsb_lookup.py` resolves a bare PDB ID to its gene
+  via a real RCSB Data API call (confirmed to expose no anatomical field at
+  all, so region assignment always stays the researcher's call).
+- **Functional & symptomatic interpretation** — `region_function.py` gives
+  all 28 atlas regions a curated functional-domain profile (motor,
+  spatiotemporal, emotional, reward, sensory, executive, autonomic) plus
+  what the lesion/stimulation/DBS literature reports for increased vs.
+  decreased regional activity, each cited - rendered as its own section,
+  explicitly labeled as a classically-reported association, not a
+  deterministic prediction.
 
 ## Scientific scope
 
@@ -100,12 +117,13 @@ faked:
    support with an entailment check, and calibrate the confidence score from
    source agreement instead of the model's own self-report.
 6. ~~**Circuit-level propagation.**~~ **Done, with scoped caveats** — a real
-   functional-connectivity-weighted single-hop propagation estimate is
-   implemented (`connectome.py`; see `docs/CONNECTOME_PROPAGATION.md`). Still
-   open: a **structural** (diffusion-tractography) connectome as a
-   complementary signal, and a **multi-hop** propagation model (e.g. network
-   diffusion / random-walk with restart) instead of the current one-hop
-   weighted sum.
+   functional-connectivity-weighted one-hop propagation estimate
+   (`connectome.propagate_effect`) drives the ranked-region table, and a
+   multi-step **random-walk-with-restart diffusion**
+   (`connectome.simulate_diffusion`) drives the animated network view
+   (`connectome_viz.py`) - see `docs/CONNECTOME_PROPAGATION.md`. Still open:
+   a **structural** (diffusion-tractography) connectome as a complementary
+   signal to the current functional one.
 
 ## Notes
 

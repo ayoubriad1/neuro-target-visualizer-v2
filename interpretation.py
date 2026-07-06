@@ -16,6 +16,7 @@ from connectome import propagate_effect
 from connectome_viz import build_propagation_animation
 from models import RegionEntry, strength_label
 from receptor_atlas import HANSEN_2022_CITATION, get_receptor_citation
+from region_function import FunctionalProfile, get_functional_profile
 from spatial_stats import MIN_REGIONS, compute_spatial_correlation
 
 
@@ -215,9 +216,87 @@ def render_connectome_propagation(regions: list[RegionEntry]):
             "or drag the **Step** slider to watch the estimated signal spread. "
             "**\"Step\" is an abstract diffusion iteration, not real elapsed time** - "
             "it has no defined relationship to seconds, minutes, or a real "
-            "pharmacokinetic timescale."
+            "pharmacokinetic timescale. The gold **arrows** point from your single "
+            "strongest-affinity region to every other region it has real, "
+            "above-threshold functional connectivity to — functional connectivity is "
+            "itself symmetric, so \"directed\" here means *drawn outward from the main "
+            "region for legibility*, not a claim about anatomical or causal direction."
         )
         st.plotly_chart(fig, width="stretch")
+
+
+def _functional_interpretation_text(regions: list[RegionEntry]) -> str:
+    """Empty string if none of the selected regions have a curated functional
+    profile (region_function.py) - e.g. only "Custom (x, y, z)" exact-
+    coordinate entries were selected, which have no region name to look up.
+    """
+    profiled: list[tuple[RegionEntry, FunctionalProfile]] = []
+    for r in regions:
+        profile = get_functional_profile(r.name)
+        if profile is not None:
+            profiled.append((r, profile))
+    if not profiled:
+        return ""
+
+    domains_touched: dict[str, set[str]] = {}
+    for r, p in profiled:
+        for domain in p.domains:
+            domains_touched.setdefault(domain, set()).add(r.name)
+
+    domain_summary = "\n".join(
+        f"- **{domain}** — via {', '.join(sorted(names))}"
+        for domain, names in sorted(domains_touched.items())
+    )
+
+    per_region = "\n\n".join(
+        f"""**{r.name}** ({', '.join(p.domains)})
+{p.description}
+- *If stimulated (increased activity)*: {p.stimulation_effect}
+- *If inhibited (decreased activity)*: {p.inhibition_effect}
+- Source: {p.citation}"""
+        for r, p in sorted(profiled, key=lambda rp: rp[0].normalized_intensity, reverse=True)
+    )
+
+    return f"""
+Based on the functional domain(s) associated with your selected region(s), here
+is what the literature reports for **increasing** vs. **decreasing** activity at
+each site. **These are the classically-reported associations from lesion
+studies, direct stimulation mapping, or DBS trials — not a deterministic
+prediction of what your specific compound will do** at that site (that
+additionally depends on whether it acts as an agonist or antagonist there, and
+on dose/exposure). Treat every line as a hypothesis to weigh, not a guarantee.
+
+**Functional domain(s) engaged by your selection:**
+{domain_summary}
+
+---
+
+{per_region}
+"""
+
+
+def render_functional_interpretation(regions: list[RegionEntry]):
+    """Deliberately separate from render_interpretation (the affinity-based
+    summary above) - this translates *which regions* into *what stimulating
+    or inhibiting them is classically associated with* at the functional/
+    symptomatic level (motor, spatiotemporal, emotional, reward, sensory,
+    executive, autonomic), which is a different - and more speculative -
+    kind of claim than the measured/entered affinity numbers, so it gets its
+    own clearly-labeled section rather than being folded into that one.
+    """
+    text = _functional_interpretation_text(regions)
+    if not text:
+        return
+    st.divider()
+    st.subheader("🧭 Functional & symptomatic interpretation")
+    st.caption(
+        "What increasing vs. decreasing activity at each selected region is "
+        "classically associated with - motor, spatiotemporal, emotional, "
+        "reward, sensory, executive, or autonomic effects. An effect can also "
+        "reach other functions indirectly through circuit connections - see "
+        "🔗 Circuit propagation above for which other regions it might spread to."
+    )
+    st.markdown(text)
 
 
 def _renderer_versions() -> str:
@@ -327,6 +406,10 @@ def build_report_markdown(regions: list[RegionEntry], threshold: float, surf_mes
     connectome_section = (
         f"\n## Circuit Propagation (experimental)\n{connectome_text}\n" if connectome_text else ""
     )
+    functional_text = _functional_interpretation_text(regions)
+    functional_section = (
+        f"\n## Functional & Symptomatic Interpretation\n{functional_text}\n" if functional_text else ""
+    )
     return f"""# Neuro-Target Affinity Visualizer — Report
 Generated {generated}
 
@@ -336,7 +419,7 @@ Generated {generated}
 
 ## Interpretation
 {_interpretation_text(regions)}
-{spatial_section}{connectome_section}
+{spatial_section}{connectome_section}{functional_section}
 ## Methods & Provenance
 {_methods_text(threshold, surf_mesh, mpl_cmap, receptor_weight)}
 """
