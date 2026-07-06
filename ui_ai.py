@@ -61,11 +61,12 @@ def render_ai_sidebar_config() -> AIConfig:
         return AIConfig(enabled=bool(api_key), provider=provider, api_key=api_key, model=model)
 
 
-def _cache_key(regions: list[RegionEntry], config: AIConfig) -> tuple:
-    return (tuple((r.name, r.kcal) for r in regions), config.provider, config.model)
+def _cache_key(regions: list[RegionEntry], config: AIConfig, receptor_weight: str | None) -> tuple:
+    return (tuple((r.name, r.kcal) for r in regions), config.provider, config.model, receptor_weight)
 
 
-def render_ai_interpretation(regions: list[RegionEntry], config: AIConfig):
+def render_ai_interpretation(regions: list[RegionEntry], config: AIConfig,
+                             receptor_weight: str | None = None):
     if not config.enabled:
         return
 
@@ -77,12 +78,12 @@ def render_ai_interpretation(regions: list[RegionEntry], config: AIConfig):
         "against primary sources before relying on it."
     )
 
-    key = _cache_key(regions, config)
+    key = _cache_key(regions, config, receptor_weight)
     cache = st.session_state.setdefault("ai_result_cache", {})
 
     if st.button("Generate AI interpretation", key="ai_generate_btn"):
         atlas_sources = {r.name: get_atlas_source(r.name) for r in regions}
-        prompt = build_user_prompt(regions, atlas_sources)
+        prompt = build_user_prompt(regions, atlas_sources, receptor_weight)
         with st.spinner(f"Asking {config.provider}…"):
             try:
                 text = generate_interpretation(config.provider, config.api_key, config.model, prompt)
