@@ -44,7 +44,7 @@ jobs:
         run: ruff check .
 
       - name: Type check (mypy)
-        run: mypy app.py visualization.py brain_regions.py atlas_regions.py receptor_atlas.py spatial_stats.py docking_import.py mni_space.py config.py styles.py models.py state.py interpretation.py ui_sidebar.py ui_views.py ai_agent.py ui_ai.py
+        run: mypy app.py visualization.py brain_regions.py atlas_regions.py receptor_atlas.py spatial_stats.py docking_import.py connectome.py mni_space.py config.py styles.py models.py state.py interpretation.py ui_sidebar.py ui_views.py ai_agent.py ui_ai.py
 
       - name: Test (pytest)
         run: pytest tests/ -v

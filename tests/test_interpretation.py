@@ -63,3 +63,16 @@ def test_build_report_markdown_omits_spatial_test_below_min_regions():
     report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6",
                                    receptor_weight="D2 (dopamine receptor)")
     assert "Spatial Correspondence Test" not in report
+
+
+def test_build_report_markdown_includes_circuit_propagation():
+    regions = [make_region_entry("Striatum (Putamen)", -12.0)]
+    report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6")
+    assert "Circuit Propagation" in report
+    assert "Predicted downstream regions" in report
+
+
+def test_build_report_markdown_omits_circuit_propagation_for_coordinates_only():
+    regions = [make_region_entry("Custom (0, 0, 0)", -9.0, coordinates=(0.0, 0.0, 0.0))]
+    report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6")
+    assert "Circuit Propagation" not in report

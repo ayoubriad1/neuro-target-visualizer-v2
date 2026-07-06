@@ -237,16 +237,45 @@ actually correspond to that density any more than chance would?
 - Deterministic (fixed permutation seed) so the reported r/p don't jitter
   across unrelated reruns.
 
+## Circuit propagation (experimental)
+
+**Problem**: every view answers "where does the compound bind?" - but a
+pharmacological effect doesn't stay confined to its binding site, it
+propagates through functional circuits (the textbook example: a
+dopaminergic compound reaches motor, mood, and cognitive domains
+simultaneously via separate parallel cortico-striato-thalamic loops, not by
+binding all three directly).
+
+- New precomputed data asset [`data/connectivity_matrix.csv`](data/connectivity_matrix.csv):
+  a real 28x28 group-average functional connectivity matrix, derived from
+  15 adult subjects' naturalistic-viewing fMRI (Richardson et al. 2018) via
+  [`scripts/compute_connectivity_matrix.py`](scripts/compute_connectivity_matrix.py)
+  (confound-regressed, detrended, band-pass filtered regional timeseries;
+  Fisher-z-averaged Pearson correlation) - fully reproducible, not a
+  hand-tuned or opaque bundled file. Sanity-checked against known
+  neuroanatomy (e.g. Putamen's top connections are Caudate/Insula/Motor
+  cortex/Thalamus, matching established cortico-striato-thalamic loops).
+- New module [`connectome.py`](connectome.py): `propagate_effect` ranks
+  atlas regions the user did **not** select by a connectivity-weighted sum
+  of their selected regions' affinities (positive connections only).
+- New results section, **"🔗 Circuit propagation (experimental)"**:
+  deliberately its own section, never blended into the 3-D heatmap, with an
+  explicit "linear estimate, not a simulation" caveat and a percentage scale
+  documented as non-comparable to the directly-entered affinities.
+- Full methodology and caveats in [`docs/CONNECTOME_PROPAGATION.md`](docs/CONNECTOME_PROPAGATION.md).
+
 ---
 
 ## Numbers
 
 | Metric | Before | After |
 |---|---|---|
-| Tests | 0 | 61 (all passing, zero real network calls) |
-| `app.py` size | 587 lines, monolithic | ~40 lines, 14 focused modules |
+| Tests | 0 | 121 (all passing) |
+| `app.py` size | 587 lines, monolithic | ~40 lines, 17 focused modules |
 | Ruff/mypy findings | unmeasured | 0 across all first-party modules |
 | Regions on a real cited atlas | 0 / 25 | 28 / 28 (0 illustrative) |
 | Receptor/transporter density maps available | 0 | 18 (real PET data, optional weighting) |
+| Docking result import formats | 0 (manual entry only) | CSV/TSV batch + AutoDock Vina |
+| Circuit propagation | none | real 28x28 functional connectivity matrix |
 | "3D Surface" repeat-render time | ~19-35s | ~0.1-1s |
 | CI | none | GitHub Actions (lint + type-check + test) |

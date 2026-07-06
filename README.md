@@ -49,6 +49,7 @@ The model is fully rotatable — the same map viewed from above:
 - [Receptor density weighting](#receptor-density-weighting)
 - [Importing docking results](#importing-docking-results)
 - [Spatial correspondence test](#spatial-correspondence-test)
+- [Circuit propagation (experimental)](#circuit-propagation-experimental)
 - [Scientific scope](#scientific-scope)
 - [Supported brain regions](#supported-brain-regions)
 - [Troubleshooting](#troubleshooting)
@@ -91,6 +92,11 @@ The model is fully rotatable — the same map viewed from above:
   test reports whether your affinity map correlates with the real receptor
   density more than a random set of atlas regions would (with a p-value).
   See [Spatial correspondence test](#spatial-correspondence-test) below.
+- **Circuit propagation (experimental)** — an effect doesn't stay confined
+  to where it binds. This section estimates, from real functional
+  connectivity, which regions you didn't select might still be reached via
+  known circuits. See [Circuit propagation](#circuit-propagation-experimental)
+  below.
 - Clean, bright, brain-inspired UI. Runs entirely locally.
 
 | 3-D Surface | Glass Brain | Stat Map |
@@ -257,6 +263,7 @@ neuroviz-v2/
 ├── receptor_atlas.py      # 18 PET receptor/transporter density maps (Hansen et al. 2022, via neuromaps)
 ├── spatial_stats.py       # spatial correspondence permutation test (affinity vs. receptor density)
 ├── docking_import.py      # CSV bulk import + AutoDock Vina result score extraction
+├── connectome.py          # circuit-propagation estimate (real functional connectivity)
 ├── mni_space.py           # shared MNI152 2mm grid constants
 ├── requirements.txt       # Python dependencies (lower-bound pins)
 ├── requirements.lock.txt  # exact, hash-verified pins for reproducibility
@@ -272,6 +279,10 @@ neuroviz-v2/
 ├── .streamlit/
 │   └── config.toml        # UI theme
 ├── ENHANCEMENT_REPORT.md  # implemented features, roadmap, scientific scope
+├── data/
+│   └── connectivity_matrix.csv   # precomputed 28x28 functional connectivity matrix
+├── scripts/
+│   └── compute_connectivity_matrix.py   # reproducible derivation of the matrix above
 ├── docs/
 │   └── Brain_Vault_v2/    # Obsidian documentation vault (notes + images)
 └── README.md
@@ -296,6 +307,10 @@ roadmap and scope statement live in `ENHANCEMENT_REPORT.md`.
 - **[`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md)** — design
   notes for the receptor density weighting feature: data source, license,
   the resampling/normalization pipeline, and how to add another receptor.
+- **[`docs/CONNECTOME_PROPAGATION.md`](docs/CONNECTOME_PROPAGATION.md)** —
+  design notes for circuit propagation: how the real functional
+  connectivity matrix was derived (and how to regenerate it), the linear
+  propagation formula, and its caveats.
 
 ---
 
@@ -401,6 +416,29 @@ selection. It's a narrower, still meaningful question than a true spin test
 would answer — with a small number of regions, treat both the correlation
 and the p-value as indicative, not conclusive. Full methodology in
 [`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md).
+
+---
+
+## Circuit propagation (experimental)
+
+A **"🔗 Circuit propagation (experimental)"** section appears below the
+interpretation whenever at least one selected named region has a matrix
+entry. It ranks the atlas regions you did **not** select by a
+connectivity-weighted estimate of how strongly an effect might reach them
+via real functional connectivity - e.g. selecting the striatum surfaces
+Thalamus, Insula and motor/limbic cortex as likely downstream regions,
+matching well-established cortico-striato-thalamic loop anatomy.
+
+**This is a linear estimate, not a simulation.** The connectivity matrix
+comes from real fMRI data (15 adult subjects, naturalistic movie-watching,
+see [`docs/CONNECTOME_PROPAGATION.md`](docs/CONNECTOME_PROPAGATION.md) for
+the full derivation), but the propagation formula itself is a simple
+one-hop weighted sum, not a validated pharmacokinetic or network-diffusion
+model - its percentage scale is relative to the strongest propagated
+region and is **not** comparable to the directly-entered affinity
+percentages elsewhere in the app. It's rendered as its own section,
+deliberately never blended into the 3-D brain heatmap, so a computed
+estimate can't be mistaken for part of the same measurement.
 
 ---
 

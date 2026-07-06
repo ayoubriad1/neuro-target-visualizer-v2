@@ -39,6 +39,17 @@ extend it toward measured, ground-truth-backed analysis.
   inventing citations/PMIDs and asks for an explicit confidence label. This is
   a single constrained LLM call from general knowledge, **not**
   literature-grounded RAG — see the roadmap item below for that larger design.
+- **Receptor density weighting** — `receptor_atlas.py` weights the affinity
+  map by one of 18 real PET-derived receptor/transporter density maps
+  (Hansen et al. 2022, via `neuromaps`), plus a **spatial correspondence
+  test** (`spatial_stats.py`, region-resampling permutation test) and
+  **docking-result import** (`docking_import.py`, CSV/TSV batch or AutoDock
+  Vina result parsing) — see `docs/RECEPTOR_WEIGHTING.md` and `CHANGELOG.md`.
+- **Circuit propagation (experimental)** — `connectome.py` estimates which
+  non-selected atlas regions an effect might reach via real functional
+  connectivity (a precomputed matrix from real fMRI data, see
+  `docs/CONNECTOME_PROPAGATION.md`), rendered as its own clearly-labeled
+  section - a linear estimate, explicitly not a validated circuit simulation.
 
 ## Scientific scope
 
@@ -88,6 +99,13 @@ faked:
    claim in a retrieved passage with an inline citation, verify citation
    support with an entailment check, and calibrate the confidence score from
    source agreement instead of the model's own self-report.
+6. ~~**Circuit-level propagation.**~~ **Done, with scoped caveats** — a real
+   functional-connectivity-weighted single-hop propagation estimate is
+   implemented (`connectome.py`; see `docs/CONNECTOME_PROPAGATION.md`). Still
+   open: a **structural** (diffusion-tractography) connectome as a
+   complementary signal, and a **multi-hop** propagation model (e.g. network
+   diffusion / random-walk with restart) instead of the current one-hop
+   weighted sum.
 
 ## Notes
 

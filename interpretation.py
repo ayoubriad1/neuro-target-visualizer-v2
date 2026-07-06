@@ -12,6 +12,7 @@ import streamlit as st
 from atlas_regions import ATLAS_CITATIONS, ATLAS_REGIONS, get_atlas_source
 from brain_regions import get_region_names
 from config import DEFAULT_SIGMA, KCAL_MAX, KCAL_MIN, SURFACE_SIGMA
+from connectome import propagate_effect
 from models import RegionEntry, strength_label
 from receptor_atlas import HANSEN_2022_CITATION, get_receptor_citation
 from spatial_stats import MIN_REGIONS, compute_spatial_correlation
@@ -160,6 +161,52 @@ With only {result.n_regions} data points, treat both r and p as indicative,
 not conclusive."""
 
 
+def _connectome_text(regions: list[RegionEntry]) -> str:
+    """Empty string if there's nothing to report (no selected region has a
+    matrix row, or every candidate's propagated score is non-positive)."""
+    propagated = propagate_effect(regions)
+    if not propagated:
+        return ""
+
+    rows = "\n".join(f"| {p.name} | {p.score:.0f}% |" for p in propagated)
+    return f"""
+**Predicted downstream regions** (via real functional connectivity, not
+direct binding):
+
+| Region | Propagated effect |
+|---|---|
+{rows}
+
+*Methodology*: each region above is one you did **not** select, ranked by a
+connectivity-weighted sum of your selected regions' affinities - real
+functional connectivity (see `docs/CONNECTOME_PROPAGATION.md`) times how
+strongly you rated the region(s) it connects to, only counting positive
+connections. The percentage is relative to the single strongest propagated
+region here, **not** on the same scale as the directly-entered affinities
+above - this is a simple linear estimate of where an effect might spread
+through known circuits, **not** a measured or simulated pharmacokinetic
+result. Treat it as a hypothesis-generation aid, not a prediction."""
+
+
+def render_connectome_propagation(regions: list[RegionEntry]):
+    """Deliberately its own section, separate from the 3-D brain render
+    above - a linear circuit-propagation estimate should never be visually
+    blended into the same heatmap as directly-measured/entered affinity, to
+    avoid it being mistaken for part of the same measurement.
+    """
+    text = _connectome_text(regions)
+    if not text:
+        return
+    st.divider()
+    st.subheader("🔗 Circuit propagation (experimental)")
+    st.caption(
+        "An effect rarely stays confined to where it binds - it propagates "
+        "through functional circuits. This section estimates where, using "
+        "real (not simulated) functional connectivity."
+    )
+    st.markdown(text)
+
+
 def _renderer_versions() -> str:
     try:
         import matplotlib as _mpl
@@ -263,6 +310,10 @@ def build_report_markdown(regions: list[RegionEntry], threshold: float, surf_mes
     generated = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     spatial_text = _spatial_test_text(regions, receptor_weight)
     spatial_section = f"\n## Spatial Correspondence Test\n{spatial_text}\n" if spatial_text else ""
+    connectome_text = _connectome_text(regions)
+    connectome_section = (
+        f"\n## Circuit Propagation (experimental)\n{connectome_text}\n" if connectome_text else ""
+    )
     return f"""# Neuro-Target Affinity Visualizer — Report
 Generated {generated}
 
@@ -272,7 +323,7 @@ Generated {generated}
 
 ## Interpretation
 {_interpretation_text(regions)}
-{spatial_section}
+{spatial_section}{connectome_section}
 ## Methods & Provenance
 {_methods_text(threshold, surf_mesh, mpl_cmap, receptor_weight)}
 """

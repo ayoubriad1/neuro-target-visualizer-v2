@@ -3,6 +3,7 @@ import streamlit as st
 
 from interpretation import (
     render_affinity_summary,
+    render_connectome_propagation,
     render_export_buttons,
     render_interpretation,
     render_methods_panel,
@@ -43,6 +44,7 @@ if regions:
     fig = render_main_view(regions, view_mode, threshold, surf_mesh, mpl_cmap, receptor_weight)
     render_affinity_summary(regions)
     render_interpretation(regions)
+    render_connectome_propagation(regions)
     render_spatial_test(regions, receptor_weight)
     render_ai_interpretation(regions, ai_config, receptor_weight)
     render_methods_panel(threshold, surf_mesh, mpl_cmap, receptor_weight)
