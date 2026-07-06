@@ -26,6 +26,38 @@ _COOL_COLORSCALE = [
     [0.75, "#63B7C9"],
     [1.0, "#8FE3D0"],   # peak -> cool teal/mint, deliberately not the warm red used for affinity
 ]
+# Static translucent backdrop only - same pial mesh/style as the "Interactive
+# 3D" view, so this animation reads as "the real brain" rather than an
+# abstract diagram, but pale and see-through enough that the animated nodes
+# (the actual point of this view) stay the visual focus.
+_BRAIN_SHELL_COLOR = "#dcdce4"
+_BRAIN_SHELL_OPACITY = 0.12
+
+
+@st.cache_data(show_spinner=False)
+def _brain_shell() -> go.Mesh3d:
+    """A static, pale, translucent pial-cortex mesh - reusing the exact same
+    fsaverage5 mesh/coordinate pipeline as the "Interactive 3D" view - purely
+    for anatomical context, so the animated network below reads as sitting
+    inside a real brain rather than floating in empty space. No per-vertex
+    coloring, no per-frame updates: it never changes across animation steps.
+    """
+    from nilearn import surface
+
+    from visualization import _coords_faces, _load_fsaverage
+
+    fs = _load_fsaverage("fsaverage5")
+    c_left, f_left = _coords_faces(surface.load_surf_mesh(fs.pial_left))
+    c_right, f_right = _coords_faces(surface.load_surf_mesh(fs.pial_right))
+    coords = np.vstack([c_left, c_right])
+    faces = np.vstack([f_left, f_right + len(c_left)])
+    return go.Mesh3d(
+        x=coords[:, 0], y=coords[:, 1], z=coords[:, 2],
+        i=faces[:, 0], j=faces[:, 1], k=faces[:, 2],
+        color=_BRAIN_SHELL_COLOR, opacity=_BRAIN_SHELL_OPACITY,
+        lighting=dict(ambient=0.9, diffuse=0.3, specular=0.0),
+        hoverinfo="skip", showlegend=False, name="cortex (context only)",
+    )
 
 
 @st.cache_data(show_spinner=False)
@@ -95,16 +127,21 @@ def build_propagation_animation(regions: list[RegionEntry], height: int = 560) -
         marker=marker_for(steps[0]), name="regions",
     )
     edge_trace = _edge_trace(tuple(sorted(names)))
+    brain_shell = _brain_shell()
 
-    fig = go.Figure(data=[edge_trace, node_trace])
+    # Trace order: [0] static brain shell, [1] static edges, [2] animated
+    # nodes - frames only touch index 2 (`traces=[2]`), so the brain mesh
+    # and the connectivity edges are drawn once and never redrawn per frame.
+    fig = go.Figure(data=[brain_shell, edge_trace, node_trace])
     fig.frames = [
-        go.Frame(data=[edge_trace, go.Scatter3d(marker=marker_for(step))], name=str(t))
+        go.Frame(data=[go.Scatter3d(marker=marker_for(step))], traces=[2], name=str(t))
         for t, step in enumerate(steps)
     ]
 
     ax = dict(showbackground=False, showgrid=False, showticklabels=False, zeroline=False, visible=False)
     fig.update_layout(
-        scene=dict(xaxis=ax, yaxis=ax, zaxis=ax, aspectmode="data"),
+        scene=dict(xaxis=ax, yaxis=ax, zaxis=ax, aspectmode="data",
+                   camera=dict(eye=dict(x=1.6, y=-1.5, z=0.55))),
         margin=dict(l=0, r=0, t=10, b=0), height=height,
         paper_bgcolor="rgba(0,0,0,0)", showlegend=False,
         updatemenus=[dict(

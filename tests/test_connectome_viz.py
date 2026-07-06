@@ -16,14 +16,30 @@ def test_build_propagation_animation_has_one_frame_per_diffusion_step():
     fig = build_propagation_animation(regions)
     assert fig is not None
     assert len(fig.frames) == 9  # step 0 (raw input) + 8 diffusion iterations
-    assert len(fig.data) == 2  # edges trace + nodes trace
+    assert len(fig.data) == 3  # brain shell + edges trace + nodes trace
+
+
+def test_build_propagation_animation_includes_brain_shell_for_context():
+    regions = [make_region_entry("Thalamus", -9.0)]
+    fig = build_propagation_animation(regions)
+    assert fig is not None
+    assert fig.data[0].type == "mesh3d"
+    assert fig.data[0].opacity < 0.3  # translucent backdrop, not the visual focus
+
+
+def test_build_propagation_animation_frames_only_touch_node_trace():
+    regions = [make_region_entry("Thalamus", -9.0)]
+    fig = build_propagation_animation(regions)
+    assert fig is not None
+    for frame in fig.frames:
+        assert frame.traces == (2,)
 
 
 def test_build_propagation_animation_node_trace_covers_every_region():
     regions = [make_region_entry("Thalamus", -9.0)]
     fig = build_propagation_animation(regions)
     assert fig is not None
-    node_trace = fig.data[1]
+    node_trace = fig.data[2]
     assert len(node_trace.x) == 28
 
 
@@ -31,7 +47,7 @@ def test_build_propagation_animation_highlights_selected_region():
     regions = [make_region_entry("Thalamus", -9.0)]
     fig = build_propagation_animation(regions)
     assert fig is not None
-    node_trace = fig.data[1]
+    node_trace = fig.data[2]
     names = list(node_trace.text)
     thalamus_idx = names.index("Thalamus")
     assert node_trace.marker.line.color[thalamus_idx] != "rgba(0,0,0,0)"
@@ -44,5 +60,5 @@ def test_build_propagation_animation_frame_marker_sizes_bounded():
     fig = build_propagation_animation(regions)
     assert fig is not None
     for frame in fig.frames:
-        sizes = frame.data[1].marker.size
+        sizes = frame.data[0].marker.size
         assert all(8.0 <= s <= 40.0 + 1e-9 for s in sizes)
