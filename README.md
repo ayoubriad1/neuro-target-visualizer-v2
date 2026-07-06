@@ -46,6 +46,10 @@ The model is fully rotatable — the same map viewed from above:
 - [Project structure](#project-structure)
 - [Documentation](#documentation)
 - [AI Interpretation](#ai-interpretation)
+- [Receptor density weighting](#receptor-density-weighting)
+- [Importing docking results](#importing-docking-results)
+- [Spatial correspondence test](#spatial-correspondence-test)
+- [Circuit propagation (experimental)](#circuit-propagation-experimental)
 - [Scientific scope](#scientific-scope)
 - [Supported brain regions](#supported-brain-regions)
 - [Troubleshooting](#troubleshooting)
@@ -75,6 +79,24 @@ The model is fully rotatable — the same map viewed from above:
   (configurable in the sidebar, never bundled or paid for by this app) to get
   a short, hallucination-guarded interpretation grounded in general
   neuroscience knowledge. See [AI Interpretation](#ai-interpretation) below.
+- **Optional receptor density weighting** — weight the affinity map by one of
+  18 real, published PET-derived receptor/transporter density maps (Hansen et
+  al. 2022), instead of painting a whole region uniformly. See
+  [Receptor density weighting](#receptor-density-weighting) below.
+- **Import docking results** — bulk-add regions from a CSV/TSV of docking
+  scores instead of re-typing them one by one, or pull the best score
+  straight out of an AutoDock Vina result file. See
+  [Importing docking results](#importing-docking-results) below.
+- **Spatial correspondence test** — when receptor weighting is active and
+  at least 3 selected regions have a usable density value, a permutation
+  test reports whether your affinity map correlates with the real receptor
+  density more than a random set of atlas regions would (with a p-value).
+  See [Spatial correspondence test](#spatial-correspondence-test) below.
+- **Circuit propagation (experimental)** — an effect doesn't stay confined
+  to where it binds. This section estimates, from real functional
+  connectivity, which regions you didn't select might still be reached via
+  known circuits. See [Circuit propagation](#circuit-propagation-experimental)
+  below.
 - Clean, bright, brain-inspired UI. Runs entirely locally.
 
 | 3-D Surface | Glass Brain | Stat Map |
@@ -238,6 +260,10 @@ neuroviz-v2/
 ├── visualization.py       # activation-volume builder + all renderers
 ├── brain_regions.py       # illustrative-point fallback (currently empty - see below) + merged name list
 ├── atlas_regions.py       # 28/28 regions → real atlas masks (Harvard-Oxford, Pauli 2017)
+├── receptor_atlas.py      # 18 PET receptor/transporter density maps (Hansen et al. 2022, via neuromaps)
+├── spatial_stats.py       # spatial correspondence permutation test (affinity vs. receptor density)
+├── docking_import.py      # CSV bulk import + AutoDock Vina result score extraction
+├── connectome.py          # circuit-propagation estimate (real functional connectivity)
 ├── mni_space.py           # shared MNI152 2mm grid constants
 ├── requirements.txt       # Python dependencies (lower-bound pins)
 ├── requirements.lock.txt  # exact, hash-verified pins for reproducibility
@@ -253,6 +279,10 @@ neuroviz-v2/
 ├── .streamlit/
 │   └── config.toml        # UI theme
 ├── ENHANCEMENT_REPORT.md  # implemented features, roadmap, scientific scope
+├── data/
+│   └── connectivity_matrix.csv   # precomputed 28x28 functional connectivity matrix
+├── scripts/
+│   └── compute_connectivity_matrix.py   # reproducible derivation of the matrix above
 ├── docs/
 │   └── Brain_Vault_v2/    # Obsidian documentation vault (notes + images)
 └── README.md
@@ -274,6 +304,13 @@ roadmap and scope statement live in `ENHANCEMENT_REPORT.md`.
 - **[`docs/AI_AGENT.md`](docs/AI_AGENT.md)** — design notes for the AI
   Interpretation feature specifically: prompt design, BYOK cost model,
   provider abstraction, and testing approach.
+- **[`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md)** — design
+  notes for the receptor density weighting feature: data source, license,
+  the resampling/normalization pipeline, and how to add another receptor.
+- **[`docs/CONNECTOME_PROPAGATION.md`](docs/CONNECTOME_PROPAGATION.md)** —
+  design notes for circuit propagation: how the real functional
+  connectivity matrix was derived (and how to regenerate it), the linear
+  propagation formula, and its caveats.
 
 ---
 
@@ -303,12 +340,117 @@ verification) is sketched in `ENHANCEMENT_REPORT.md` as a future upgrade.
 
 ---
 
+## Receptor density weighting
+
+An optional sidebar section, **"Receptor Weighting"**, lets you weight the
+rendered map by one of **18 real, published PET-derived receptor/transporter
+density maps** (Hansen, Shafiei et al. 2022, Nature Neuroscience, fetched via
+the `neuromaps` package) — dopamine (D1, D2, DAT), norepinephrine (NET),
+serotonin (5-HT1a/1b/2a/4, 5-HTT), acetylcholine (VAChT, α4β2, M1), glutamate
+(mGluR5, NMDA), GABAa, histamine (H3), cannabinoid (CB1), and opioid (MOR).
+
+1. In the sidebar, under **Receptor Weighting (optional)**, pick your
+   compound's target from the dropdown (default: **None**, unchanged
+   behavior — the whole selected region stays uniform).
+2. The affinity volume is multiplied voxel-by-voxel by that target's real
+   density (renormalized so the display-threshold slider keeps working the
+   same way) — regions with identical nominal affinity can now render at
+   different strengths depending on how much of the real receptor is there.
+3. The sidebar caption, the Methods & provenance panel, and the AI
+   interpretation prompt all cite the specific tracer study used, plus
+   Hansen et al. 2022.
+
+**License note**: this PET data is released under **CC BY-NC-SA 4.0
+(non-commercial)**. It's why this feature is optional and why this tool must
+stay free/non-commercial as long as it's used. See
+[`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md) for the full
+citation list and design details.
+
+---
+
+## Importing docking results
+
+Instead of clicking **➕ Add Region** by hand for every result, the sidebar's
+**📥 Import docking results (optional)** expander (at the very top) accepts:
+
+1. **A CSV/TSV batch** — one row per region: a `region` column (or `name`)
+   and a `kcal` column (`kcal_mol`/`affinity` also accepted), e.g.:
+   ```csv
+   region,kcal
+   Thalamus,-9.2
+   Hippocampus,-6.5
+   ```
+   Add `x,y,z` columns instead of (or alongside) `region` to bulk-import
+   exact MNI coordinates — same semantics as the sidebar's advanced input
+   mode. Invalid rows (unknown region name, unparseable or non-negative
+   affinity) are reported individually and skipped rather than failing the
+   whole import; valid rows are previewed before you confirm with
+   **➕ Import N region(s)**.
+2. **A single AutoDock Vina result file** (the `.pdbqt` pose output, or the
+   plain-text log/table Vina prints) — the best (top-ranked) score is
+   extracted and prefilled into the **Binding Affinity** field below, so you
+   don't have to retype it. A Vina score has no inherent brain-region
+   association by itself, so you still pick the matching region (or
+   receptor, for [weighting](#receptor-density-weighting)) yourself — this
+   only removes the copy/retype step, not that judgment call.
+
+---
+
+## Spatial correspondence test
+
+When [receptor weighting](#receptor-density-weighting) is active and at
+least 3 of your selected regions have a usable density value, a **"🧪
+Spatial correspondence test"** section appears below the interpretation: the
+Pearson correlation between your regions' normalized affinity and the real
+receptor density in each region, plus a permutation-based p-value answering
+*"is this stronger than a random same-size set of atlas regions?"*
+
+**This is not a full vertex-level "spin test"** (Alexander-Bloch/Vasa/Burt) —
+those rotate a spherical projection of a registered cortical-surface
+parcellation to build a spatial-autocorrelation-preserving null, which needs
+a single unified surface parcellation object this app's mixed
+cortical+subcortical atlas set doesn't have. Instead it's a
+**region-resampling permutation test**: the null distribution comes from
+swapping in 5,000 random same-size sets of atlas regions in place of your
+selection. It's a narrower, still meaningful question than a true spin test
+would answer — with a small number of regions, treat both the correlation
+and the p-value as indicative, not conclusive. Full methodology in
+[`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md).
+
+---
+
+## Circuit propagation (experimental)
+
+A **"🔗 Circuit propagation (experimental)"** section appears below the
+interpretation whenever at least one selected named region has a matrix
+entry. It ranks the atlas regions you did **not** select by a
+connectivity-weighted estimate of how strongly an effect might reach them
+via real functional connectivity - e.g. selecting the striatum surfaces
+Thalamus, Insula and motor/limbic cortex as likely downstream regions,
+matching well-established cortico-striato-thalamic loop anatomy.
+
+**This is a linear estimate, not a simulation.** The connectivity matrix
+comes from real fMRI data (15 adult subjects, naturalistic movie-watching,
+see [`docs/CONNECTOME_PROPAGATION.md`](docs/CONNECTOME_PROPAGATION.md) for
+the full derivation), but the propagation formula itself is a simple
+one-hop weighted sum, not a validated pharmacokinetic or network-diffusion
+model - its percentage scale is relative to the strongest propagated
+region and is **not** comparable to the directly-entered affinity
+percentages elsewhere in the app. It's rendered as its own section,
+deliberately never blended into the 3-D brain heatmap, so a computed
+estimate can't be mistaken for part of the same measurement.
+
+---
+
 ## Scientific scope
 
 This is a **visualization and intuition** tool. Affinity values are
-**user-entered**; the app uses **no** measured PET / mRNA data and no docking
-engine. The maps show **predicted localization and relative strength** — not
-measured receptor occupancy or in-vivo concentration.
+**user-entered**, and the app performs no docking. The maps show **predicted
+localization and relative strength** — not measured receptor occupancy or
+in-vivo concentration. Optionally, the map can be weighted by a real
+PET-derived receptor-density atlas (see
+[Receptor density weighting](#receptor-density-weighting)) — that weighting
+layer is real measured data, but affinity itself remains user-entered.
 
 **Region model** — all 28 regions render on a real, cited parcellation mask
 (`atlas_regions.py`): Harvard-Oxford cortical/subcortical atlases and Pauli et

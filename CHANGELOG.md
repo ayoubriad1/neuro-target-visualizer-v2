@@ -168,15 +168,114 @@ express "this one exact spot."
 - The AI interpretation prompt and the region chip/summary UI both handle
   this case explicitly rather than mislabeling it as "illustrative."
 
+## Receptor density weighting
+
+**Problem**: affinity is painted uniformly across a whole selected region,
+implying the target is equally present everywhere in it - not generally true,
+and something two compounds with identical affinity on the same receptor
+would still show identically, even if the real receptor is concentrated in
+very different places for each.
+
+- New module [`receptor_atlas.py`](receptor_atlas.py): fetches 18 real,
+  published PET-derived receptor/transporter density maps (Hansen, Shafiei et
+  al. 2022, Nature Neuroscience) via the `neuromaps` package, resampled onto
+  this app's MNI152 2mm grid the same way the Pauli 2017 atlas already is.
+  Covers dopamine (D1, D2, DAT), norepinephrine (NET), serotonin (5-HT1a/1b/
+  2a/4, 5-HTT), acetylcholine (VAChT, α4β2, M1), glutamate (mGluR5, NMDA),
+  GABAa, histamine (H3), cannabinoid (CB1), and opioid (MOR) systems.
+- New optional sidebar section, **"Receptor Weighting"**: pick a target, and
+  `visualization.create_activation_volume` multiplies the raw affinity volume
+  by that receptor's real density (renormalized so the display-threshold
+  slider's semantics stay unchanged) instead of leaving the whole region
+  uniform.
+- The Methods & provenance panel and the AI-interpretation prompt both
+  explicitly note when weighting is active and cite the specific tracer
+  study + Hansen et al. 2022, so neither a downloaded report nor the AI
+  interpretation can imply the map is affinity-only when it isn't.
+- **License note**: this data is CC BY-NC-SA 4.0 (non-commercial, attribution
+  required) - see [`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md)
+  for the full design write-up, citation requirements, and how to add another
+  receptor/tracer.
+
+## Importing docking results
+
+**Problem**: every region had to be added one at a time through the sidebar
+form - the single biggest friction point for anyone with an actual
+virtual-screening or docking run's worth of results (tens of targets) to
+visualize, rather than a handful typed in for a demo.
+
+- New module [`docking_import.py`](docking_import.py): `parse_csv` for
+  bulk `region,kcal` (+ optional `x,y,z`) rows, with per-row validation
+  (unknown region names, non-negative or unparseable affinities) reported
+  individually rather than failing or silently dropping the whole batch;
+  `parse_vina_score` extracts the best pose's affinity from either a raw
+  AutoDock Vina `.pdbqt` output or its plain-text results table.
+- New sidebar section, **"📥 Import docking results (optional)"**: a CSV/TSV
+  uploader previews valid rows and imports them in one click, and a Vina
+  file uploader prefills the "Binding Affinity" field with the extracted
+  score so it doesn't have to be retyped (the user still assigns it to a
+  region, since a docking score alone has no brain-region association).
+
+## Spatial correspondence test
+
+**Problem**: receptor weighting shows *where* a receptor is dense, but gave
+no way to ask the natural follow-up - does the user's own affinity pattern
+actually correspond to that density any more than chance would?
+
+- New module [`spatial_stats.py`](spatial_stats.py): correlates each
+  selected region's normalized affinity against the real receptor density
+  in that region (mean within the atlas mask, or the value at the exact
+  voxel for coordinate-based entries), then runs a 5,000-sample
+  region-resampling permutation test (swapping in random same-size sets of
+  atlas regions) to report a p-value. Explicitly **not** a vertex-level
+  "spin test" (no unified surface parcellation to rotate, given this app's
+  mixed cortical/subcortical/coordinate region set) - documented as such in
+  the UI, the downloadable report, and `docs/RECEPTOR_WEIGHTING.md`.
+- New results section, **"🧪 Spatial correspondence test"**: only appears
+  when receptor weighting is active and at least 3 selected regions have a
+  usable density value; included in the downloadable report too.
+- Deterministic (fixed permutation seed) so the reported r/p don't jitter
+  across unrelated reruns.
+
+## Circuit propagation (experimental)
+
+**Problem**: every view answers "where does the compound bind?" - but a
+pharmacological effect doesn't stay confined to its binding site, it
+propagates through functional circuits (the textbook example: a
+dopaminergic compound reaches motor, mood, and cognitive domains
+simultaneously via separate parallel cortico-striato-thalamic loops, not by
+binding all three directly).
+
+- New precomputed data asset [`data/connectivity_matrix.csv`](data/connectivity_matrix.csv):
+  a real 28x28 group-average functional connectivity matrix, derived from
+  15 adult subjects' naturalistic-viewing fMRI (Richardson et al. 2018) via
+  [`scripts/compute_connectivity_matrix.py`](scripts/compute_connectivity_matrix.py)
+  (confound-regressed, detrended, band-pass filtered regional timeseries;
+  Fisher-z-averaged Pearson correlation) - fully reproducible, not a
+  hand-tuned or opaque bundled file. Sanity-checked against known
+  neuroanatomy (e.g. Putamen's top connections are Caudate/Insula/Motor
+  cortex/Thalamus, matching established cortico-striato-thalamic loops).
+- New module [`connectome.py`](connectome.py): `propagate_effect` ranks
+  atlas regions the user did **not** select by a connectivity-weighted sum
+  of their selected regions' affinities (positive connections only).
+- New results section, **"🔗 Circuit propagation (experimental)"**:
+  deliberately its own section, never blended into the 3-D heatmap, with an
+  explicit "linear estimate, not a simulation" caveat and a percentage scale
+  documented as non-comparable to the directly-entered affinities.
+- Full methodology and caveats in [`docs/CONNECTOME_PROPAGATION.md`](docs/CONNECTOME_PROPAGATION.md).
+
 ---
 
 ## Numbers
 
 | Metric | Before | After |
 |---|---|---|
-| Tests | 0 | 57 (all passing, zero real network calls) |
-| `app.py` size | 587 lines, monolithic | ~40 lines, 13 focused modules |
+| Tests | 0 | 121 (all passing) |
+| `app.py` size | 587 lines, monolithic | ~40 lines, 17 focused modules |
 | Ruff/mypy findings | unmeasured | 0 across all first-party modules |
 | Regions on a real cited atlas | 0 / 25 | 28 / 28 (0 illustrative) |
+| Receptor/transporter density maps available | 0 | 18 (real PET data, optional weighting) |
+| Docking result import formats | 0 (manual entry only) | CSV/TSV batch + AutoDock Vina |
+| Circuit propagation | none | real 28x28 functional connectivity matrix |
 | "3D Surface" repeat-render time | ~19-35s | ~0.1-1s |
 | CI | none | GitHub Actions (lint + type-check + test) |

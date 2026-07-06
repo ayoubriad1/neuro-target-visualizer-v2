@@ -13,6 +13,7 @@ from nilearn import plotting
 from atlas_regions import get_region_mask
 from brain_regions import get_coordinates
 from mni_space import MNI_AFFINE, MNI_SHAPE
+from receptor_atlas import get_receptor_density
 
 # Gray -> red colorscale: the cortex stays neutral gray, and activation ramps
 # gray -> pale-yellow -> orange -> deep-red with intensity. This is the
@@ -98,7 +99,7 @@ def _stamp_gaussian(volume, ii, jj, kk, x, y, z, amplitude, sigma_vox):
 
 
 @st.cache_data(show_spinner=False)
-def _compute_activation_array(regions_and_scores, sigma=6.0):
+def _compute_activation_array(regions_and_scores, sigma=6.0, receptor_weight=None):
     volume = np.zeros(MNI_SHAPE, dtype=np.float64)
     sigma_vox = sigma / 2.0
     ii, jj, kk = np.mgrid[0:MNI_SHAPE[0], 0:MNI_SHAPE[1], 0:MNI_SHAPE[2]]
@@ -132,10 +133,18 @@ def _compute_activation_array(regions_and_scores, sigma=6.0):
         if abs(x) > MIDLINE_EPS_MM:
             _stamp_gaussian(volume, ii, jj, kk, -x, y, z, amplitude, sigma_vox)
 
+    if receptor_weight is not None:
+        density = get_receptor_density(receptor_weight)
+        if density is not None:
+            volume = volume * density
+            peak = volume.max()
+            if peak > 0:
+                volume = volume / peak
+
     return np.clip(volume, 0, 1)
 
 
-def create_activation_volume(regions_and_scores, sigma=6.0):
+def create_activation_volume(regions_and_scores, sigma=6.0, receptor_weight=None):
     """Build the MNI152 activation volume. Each item is (name, score) or
     (name, score, exact_coordinates):
 
@@ -146,11 +155,18 @@ def create_activation_volume(regions_and_scores, sigma=6.0):
       coordinates" input mode for a known precise target (e.g. a DBS
       contact or a paper-reported peak).
 
-    The expensive per-region work is cached on (regions_and_scores, sigma) so
-    repeated Streamlit reruns with unchanged inputs are instant instead of
-    recomputing a 91x109x91 grid every time.
+    `receptor_weight`, if given, is a key into receptor_atlas.RECEPTOR_MAPS:
+    the raw affinity volume above is multiplied elementwise by that
+    receptor/transporter's real PET-derived density map (renormalized so the
+    peak stays at 1.0, keeping the display-threshold slider's semantics
+    unchanged) - i.e. affinity alone no longer paints a whole region
+    uniformly, it's weighted by where the target actually sits.
+
+    The expensive per-region work is cached on (regions_and_scores, sigma,
+    receptor_weight) so repeated Streamlit reruns with unchanged inputs are
+    instant instead of recomputing a 91x109x91 grid every time.
     """
-    volume = _compute_activation_array(tuple(regions_and_scores), sigma)
+    volume = _compute_activation_array(tuple(regions_and_scores), sigma, receptor_weight)
     return nib.Nifti1Image(volume, MNI_AFFINE)
 
 

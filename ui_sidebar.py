@@ -4,19 +4,83 @@ import streamlit as st
 from atlas_regions import get_atlas_source, is_atlas_backed
 from brain_regions import get_region_names
 from config import COLOR_SCHEMES, DEFAULT_COLOR_SCHEME
+from docking_import import parse_csv, parse_vina_score
 from mni_space import MNI_X_RANGE, MNI_Y_RANGE, MNI_Z_RANGE
 from models import strength_label
+from receptor_atlas import HANSEN_2022_CITATION, RECEPTOR_NAMES, get_receptor_citation
 from state import add_region, clear_regions, get_regions, remove_region
 from styles import render_sidebar_brain_icon
 
 _INPUT_MODE_NAMED = "Named region (atlas-verified)"
 _INPUT_MODE_EXACT = "Exact MNI coordinates (advanced)"
+_NO_RECEPTOR_WEIGHT = "None (uniform affinity, current behavior)"
 
 
-def render_sidebar() -> tuple[float, str, str]:
-    """Renders the full sidebar; returns (threshold, surf_mesh, mpl_cmap) for the main view."""
+def _render_docking_import():
+    """Optional import section: bulk-add regions from a CSV/TSV of docking
+    results, or pull the best score out of a single AutoDock Vina result
+    file (.pdbqt output, or its plain-text log) to save retyping it. Both
+    are purely convenience/data-entry shortcuts - a Vina score has no
+    inherent brain-region association, so the user still has to pick the
+    region/receptor it belongs to via the normal controls below.
+    """
+    with st.expander("📥 Import docking results (optional)", expanded=False):
+        st.caption(
+            "Bulk-add regions from a CSV/TSV (`region,kcal` columns - "
+            "`name`/`affinity`/`kcal_mol` also accepted, plus optional "
+            "`x,y,z` for exact coordinates), or pull the top score out of a "
+            "Vina result file instead of retyping it."
+        )
+
+        csv_file = st.file_uploader("CSV / TSV batch", type=["csv", "tsv", "txt"], key="csv_import")
+        if csv_file is not None:
+            result = parse_csv(csv_file.getvalue().decode("utf-8", errors="replace"))
+            if result.rows:
+                st.success(f"{len(result.rows)} valid row(s) ready to import.")
+                st.dataframe(
+                    [{"Region": r.name, "kcal/mol": r.kcal} for r in result.rows],
+                    width="stretch", hide_index=True,
+                )
+            for err in result.errors:
+                st.warning(f"⚠️ {err}")
+            if result.rows and st.button(
+                f"➕ Import {len(result.rows)} region(s)", key="csv_import_btn", width="stretch"
+            ):
+                for r in result.rows:
+                    add_region(r.name, r.kcal, r.coordinates)
+                st.rerun()
+
+        vina_file = st.file_uploader(
+            "Vina result (.pdbqt or log)", type=["pdbqt", "txt", "log"], key="vina_import"
+        )
+        if vina_file is not None:
+            file_id = f"{vina_file.name}_{vina_file.size}"
+            score = parse_vina_score(vina_file.getvalue().decode("utf-8", errors="replace"))
+            if score is None:
+                st.warning(
+                    "⚠️ No Vina score recognized in this file (expected a "
+                    "`REMARK VINA RESULT:` line, or a results table with a "
+                    "numbered pose row)."
+                )
+            else:
+                # Only prefill once per uploaded file - otherwise every
+                # unrelated rerun (e.g. moving the threshold slider) would
+                # keep re-overwriting anything the user typed afterwards.
+                if st.session_state.get("_last_vina_file_id") != file_id:
+                    st.session_state["_last_vina_file_id"] = file_id
+                    st.session_state["kcal_input"] = max(-15.0, min(-0.1, score))
+                st.success(
+                    f"Best score found: **{score:.1f} kcal/mol** - prefilled into "
+                    "\"Binding Affinity\" below. Pick the matching region and click Add."
+                )
+
+
+def render_sidebar() -> tuple[float, str, str, str | None]:
+    """Renders the full sidebar; returns (threshold, surf_mesh, mpl_cmap,
+    receptor_weight) for the main view."""
     with st.sidebar:
         render_sidebar_brain_icon()
+        _render_docking_import()
         st.header("Add Brain Region")
 
         input_mode = st.radio(
@@ -59,8 +123,10 @@ def render_sidebar() -> tuple[float, str, str]:
             value=-7.0,
             step=0.1,
             format="%.1f",
+            key="kcal_input",
             help="Enter a negative value. More negative = stronger binding. "
-                 "Typical range: -1 (weak) to -15 (very strong).",
+                 "Typical range: -1 (weak) to -15 (very strong). Can be "
+                 "prefilled from a Vina result file via the import section above.",
         )
 
         if st.button("➕ Add Region", width="stretch"):
@@ -127,4 +193,22 @@ def render_sidebar() -> tuple[float, str, str]:
         )
         mpl_cmap = COLOR_SCHEMES[scheme_name]
 
-    return threshold, surf_mesh, mpl_cmap
+        st.divider()
+        st.header("Receptor Weighting (optional)")
+        receptor_choice = st.selectbox(
+            "Weight affinity by real receptor density",
+            [_NO_RECEPTOR_WEIGHT] + RECEPTOR_NAMES,
+            help="If your compound targets a specific receptor/transporter, "
+                 "weight the affinity map by that target's real, published "
+                 "PET-derived density across the brain instead of painting "
+                 "the whole selected region uniformly - two compounds with "
+                 "the same affinity on the same receptor will then light up "
+                 "differently depending on where that receptor actually sits. "
+                 "Structural density is not a guarantee of functional effect.",
+        )
+        receptor_weight = None if receptor_choice == _NO_RECEPTOR_WEIGHT else receptor_choice
+        if receptor_weight is not None:
+            st.caption(f"📡 {get_receptor_citation(receptor_weight)}")
+            st.caption(f"Compiled via {HANSEN_2022_CITATION}")
+
+    return threshold, surf_mesh, mpl_cmap, receptor_weight
