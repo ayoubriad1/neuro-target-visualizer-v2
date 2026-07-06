@@ -61,7 +61,8 @@ def _render_docking_import():
             for err in result.errors:
                 st.warning(f"⚠️ {err}")
             if result.rows and st.button(
-                f"➕ Import {len(result.rows)} region(s)", key="csv_import_btn", width="stretch"
+                f"➕ Import {len(result.rows)} region(s)", key="csv_import_btn",
+                width="stretch", type="primary",
             ):
                 for r in result.rows:
                     add_region(r.name, r.kcal, r.coordinates)
@@ -80,7 +81,7 @@ def _render_docking_import():
                 "an auto-pick."
             ),
         )
-        if st.button("Look up", key="pdb_lookup_btn") and pdb_query.strip():
+        if st.button("Look up", key="pdb_lookup_btn", type="primary") and pdb_query.strip():
             meta = fetch_pdb_metadata(pdb_query)
             if meta is None:
                 st.warning(
@@ -164,7 +165,7 @@ def _render_session_io():
             st.download_button(
                 "💾 Save session", data=export_session(regions, receptor_weight),
                 file_name="neuroviz_session.json", mime="application/json",
-                width="stretch",
+                width="stretch", type="primary",
                 help="Downloads the current region list and receptor "
                      "weighting choice - reloading it elsewhere reproduces "
                      "this exact analysis.",
@@ -253,7 +254,7 @@ def render_sidebar() -> tuple[float, str, str, str | None]:
                  "prefilled from a Vina result file via the import section above.",
         )
 
-        if st.button("➕ Add Region", width="stretch"):
+        if st.button("➕ Add Region", width="stretch", type="primary"):
             add_region(region, kcal_score, coordinates)
             st.rerun()
 

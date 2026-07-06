@@ -81,7 +81,7 @@ def render_ai_interpretation(regions: list[RegionEntry], config: AIConfig,
     key = _cache_key(regions, config, receptor_weight)
     cache = st.session_state.setdefault("ai_result_cache", {})
 
-    if st.button("Generate AI interpretation", key="ai_generate_btn"):
+    if st.button("Generate AI interpretation", key="ai_generate_btn", type="primary"):
         atlas_sources = {r.name: get_atlas_source(r.name) for r in regions}
         prompt = build_user_prompt(regions, atlas_sources, receptor_weight)
         with st.spinner(f"Asking {config.provider}…"):

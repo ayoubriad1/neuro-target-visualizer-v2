@@ -1,241 +1,254 @@
-"""Theme CSS and the small HTML snippets (hero header, sidebar brain, loader
-spinner) used to skin the default Streamlit chrome.
+"""Theme CSS and the small HTML snippets (header, sidebar mark, loader)
+used to skin the default Streamlit chrome.
+
+Design intent: a restrained, editorial look for a scientific tool - solid
+neutral surfaces, one confident accent color used sparingly for emphasis
+and interactive state (not a decorative gradient), real borders on every
+input so it reads as editable at a glance, and no animated mascot or
+glass/shimmer effects competing with the actual data.
 """
 import streamlit as st
 
-_CSS = """
+_INK = "#1B1B26"          # primary text - near-black, not a tinted gray
+_INK_SOFT = "#55556B"     # secondary text
+_ACCENT = "#3D3480"       # single solid accent (buttons, links, active state)
+_ACCENT_DARK = "#2C2566"  # accent hover/pressed
+_LINE = "#DCDCE3"         # neutral border
+_LINE_SOFT = "#E9E9EF"
+_SURFACE = "#FFFFFF"
+_SURFACE_SUNKEN = "#F4F4F7"
+
+_CSS = f"""
 <style>
-/* ---- Base palette ---------------------------------------------------- */
-.stApp {
-    background: linear-gradient(160deg, #FBFBFE 0%, #F2F1F9 55%, #ECEAF6 100%);
-}
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #F3F1FB 0%, #E8E5F4 100%);
-    border-right: 1px solid #E0DCEF;
-}
+/* ---- Base palette: neutral surfaces, accent reserved for emphasis ---- */
+.stApp {{
+    background: {_SURFACE_SUNKEN};
+}}
+section[data-testid="stSidebar"] {{
+    background: {_SURFACE};
+    border-right: 1px solid {_LINE};
+}}
+h1, h2, h3, h4, .stMarkdown p, label, [data-testid="stWidgetLabel"] p {{
+    color: {_INK};
+}}
 
-/* ---- Centered hero header -------------------------------------------- */
-.brain-hero { text-align: center; margin: 0.2rem 0 1.3rem 0; }
-.brain-hero .brain-icon {
-    font-size: 56px; display: inline-block; line-height: 1;
-    animation: brainspin 3.4s linear infinite;
-    filter: drop-shadow(0 5px 12px rgba(138,111,196,0.35));
-}
-.brain-hero h1 {
-    font-size: 2.5rem; font-weight: 800; margin: 0.35rem 0 0 0;
-    background: linear-gradient(90deg, #6E5BB5 0%, #9A6FC9 45%, #C77FB4 100%);
-    -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: -0.5px;
-}
-.brain-hero .subtitle {
-    color: #5C5570; font-size: 1.05rem; margin-top: 0.4rem;
-}
-.brain-hero .byline {
-    margin-top: 0.75rem; font-size: 1.25rem; color: #5C5570; font-weight: 500;
-}
-.brain-hero .byline b {
-    color: #6E5BB5; font-size: 1.45rem; font-weight: 800;
-    letter-spacing: 0.3px;
-}
-.brain-hero hr {
-    border: none; height: 2px; width: 130px; margin: 1rem auto 0 auto;
-    background: linear-gradient(90deg, transparent, #B49BDE, transparent);
-}
+/* ---- Header: static wordmark, no animation, no gradient-clipped text - */
+.app-header {{
+    display: flex; align-items: center; gap: 0.85rem;
+    padding-bottom: 1rem; margin-bottom: 1.1rem;
+    border-bottom: 1px solid {_LINE};
+}}
+.app-header .mark {{
+    font-size: 2.1rem; line-height: 1; flex-shrink: 0;
+}}
+.app-header h1 {{
+    font-size: 1.55rem; font-weight: 700; margin: 0; color: {_INK};
+    letter-spacing: -0.3px;
+}}
+.app-header .subtitle {{
+    color: {_INK_SOFT}; font-size: 0.92rem; margin-top: 0.15rem;
+}}
+.app-header .byline {{
+    margin-top: 0.35rem; font-size: 0.85rem; color: {_INK_SOFT};
+}}
+.app-header .byline b {{ color: {_INK}; font-weight: 700; }}
 
-/* ---- Rotating brain at the top of the sidebar ------------------------ */
-.sidebar-brain { text-align: center; margin: 0.1rem 0 0.5rem 0; }
-.sidebar-brain .spin {
-    font-size: 46px; display: inline-block; line-height: 1;
-    animation: brainspin 3.4s linear infinite;
-    filter: drop-shadow(0 4px 10px rgba(138,111,196,0.35));
-}
+/* ---- Sidebar mark: small, static, top-left - not a spinning centerpiece */
+.sidebar-mark {{
+    display: flex; align-items: center; gap: 0.5rem;
+    margin: 0.1rem 0 0.9rem 0; padding-bottom: 0.7rem;
+    border-bottom: 1px solid {_LINE};
+}}
+.sidebar-mark .glyph {{ font-size: 1.35rem; line-height: 1; }}
+.sidebar-mark .label {{
+    font-size: 0.82rem; font-weight: 700; color: {_INK};
+    text-transform: uppercase; letter-spacing: 0.6px;
+}}
 
-/* ---- Buttons --------------------------------------------------------- */
-.stButton > button {
-    border-radius: 10px; border: 1px solid #CFC4EA;
-    background: #FFFFFF; color: #4B4368; font-weight: 600;
-    transition: all 0.15s ease;
-}
-.stButton > button:hover {
-    border-color: #8A6FC4; color: #6E5BB5;
-    box-shadow: 0 2px 10px rgba(138,111,196,0.25);
-}
+/* ---- Buttons: one filled primary style, clear hover/focus, no gradient - */
+.stButton > button, .stDownloadButton > button {{
+    border-radius: 7px; border: 1px solid {_LINE};
+    background: {_SURFACE}; color: {_INK}; font-weight: 600;
+    transition: border-color 0.12s ease, background 0.12s ease;
+}}
+.stButton > button:hover, .stDownloadButton > button:hover {{
+    border-color: {_ACCENT}; color: {_ACCENT}; background: {_SURFACE_SUNKEN};
+}}
+.stButton > button:focus-visible, .stDownloadButton > button:focus-visible {{
+    outline: 2px solid {_ACCENT}; outline-offset: 1px;
+}}
+/* Primary action buttons (Add Region, Import N, Save session) - filled,
+   so the one button that actually commits an action stands out from
+   secondary controls (Clear All, ✕) instead of every button looking alike. */
+.stButton > button[kind="primary"] {{
+    background: {_ACCENT}; border-color: {_ACCENT}; color: #FFFFFF;
+}}
+.stButton > button[kind="primary"]:hover {{
+    background: {_ACCENT_DARK}; border-color: {_ACCENT_DARK}; color: #FFFFFF;
+}}
 
-/* ---- Affinity summary (professional / futuristic bars) --------------- */
-.aff-wrap { margin-top: 0.4rem; }
-.aff-card {
-    background: rgba(255,255,255,0.66);
-    border: 1px solid #E2DCF1; border-radius: 14px;
+/* ---- Text/number inputs: explicit border + fill so they read as ------- */
+/* ---- editable at a glance - Streamlit's own default is nearly          */
+/* ---- invisible against this app's surfaces (the reported issue).      */
+/* BaseWeb wraps the actual visible box in its own container div (not the
+   bare <input>/<textarea> itself) - styling only the inner element left
+   the real border at Streamlit's near-invisible default, which was the
+   reported bug (a text field with no visible edge reads as non-editable). */
+div[data-baseweb="base-input"],
+div[data-baseweb="select"] > div,
+div[data-baseweb="textarea"] {{
+    background: {_SURFACE} !important;
+    border: 1.5px solid {_LINE} !important;
+    border-radius: 7px !important;
+    box-shadow: none !important;
+}}
+div[data-testid="stTextInput"] input,
+div[data-testid="stNumberInput"] input,
+div[data-testid="stTextArea"] textarea {{
+    background: transparent !important;
+    color: {_INK} !important;
+}}
+div[data-baseweb="base-input"]:hover,
+div[data-baseweb="select"]:hover > div,
+div[data-baseweb="textarea"]:hover {{
+    border-color: #B9B9C9 !important;
+}}
+div[data-baseweb="base-input"]:has(input:focus),
+div[data-baseweb="select"]:has(input:focus) > div,
+div[data-baseweb="textarea"]:has(textarea:focus) {{
+    border-color: {_ACCENT} !important;
+    box-shadow: 0 0 0 3px rgba(61,52,128,0.15) !important;
+}}
+div[data-testid="stFileUploaderDropzone"] {{
+    background: {_SURFACE} !important; border: 1.5px dashed {_LINE} !important;
+}}
+
+/* ---- Affinity summary: solid cards, solid progress fill, no shimmer --- */
+.aff-wrap {{ margin-top: 0.4rem; }}
+.aff-card {{
+    background: {_SURFACE};
+    border: 1px solid {_LINE}; border-radius: 10px;
     padding: 0.85rem 1.1rem; margin-bottom: 0.7rem;
-    box-shadow: 0 2px 12px rgba(110,91,181,0.07);
-    backdrop-filter: blur(4px);
-}
-.aff-head {
+    box-shadow: 0 1px 3px rgba(27,27,38,0.05);
+}}
+.aff-head {{
     display: flex; align-items: baseline; justify-content: space-between;
     gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.55rem;
-}
-.aff-name { font-weight: 700; font-size: 1.02rem; color: #2D2A3A; }
-.aff-meta { display: flex; align-items: center; gap: 0.5rem; }
-.aff-kcal {
+}}
+.aff-name {{ font-weight: 700; font-size: 1.0rem; color: {_INK}; }}
+.aff-meta {{ display: flex; align-items: center; gap: 0.5rem; }}
+.aff-kcal {{
     font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.8rem;
-    color: #6E5BB5; background: #EFEAF9;
-    padding: 0.12rem 0.5rem; border-radius: 6px;
-}
-.aff-tag {
-    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.4px;
+    color: {_ACCENT}; background: {_SURFACE_SUNKEN};
+    padding: 0.12rem 0.5rem; border-radius: 5px;
+}}
+.aff-tag {{
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.4px;
     text-transform: uppercase; color: #FFFFFF;
-    padding: 0.12rem 0.55rem; border-radius: 6px;
-}
-.aff-bar-row { display: flex; align-items: center; gap: 0.85rem; }
-.aff-track {
-    position: relative; flex: 1; height: 13px; border-radius: 999px;
-    background: #E8E3F4; overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(76,67,104,0.18);
-}
-.aff-fill {
-    position: relative; height: 100%; border-radius: 999px; overflow: hidden;
-    background: linear-gradient(90deg, #6E5BB5 0%, #9A6FC9 50%, #C77FB4 100%);
-    box-shadow: 0 0 10px rgba(154,111,201,0.55);
-}
-.aff-fill::after {
-    content: ""; position: absolute; inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
-    transform: translateX(-100%);
-    animation: shimmer 2.2s ease-in-out infinite;
-}
-@keyframes shimmer { 100% { transform: translateX(100%); } }
-.aff-pct {
-    min-width: 50px; text-align: right; font-weight: 800;
-    font-size: 1.0rem; color: #6E5BB5;
-}
+    padding: 0.12rem 0.55rem; border-radius: 5px;
+}}
+.aff-bar-row {{ display: flex; align-items: center; gap: 0.85rem; }}
+.aff-track {{
+    position: relative; flex: 1; height: 10px; border-radius: 999px;
+    background: {_SURFACE_SUNKEN}; overflow: hidden;
+    border: 1px solid {_LINE_SOFT};
+}}
+.aff-fill {{
+    height: 100%; border-radius: 999px;
+    background: {_ACCENT};
+}}
+.aff-pct {{
+    min-width: 46px; text-align: right; font-weight: 700;
+    font-size: 0.95rem; color: {_INK};
+}}
 
 /* ---- Sidebar "Active Regions" chips (mirrors .aff-card, compact) ------ */
-.region-chip {
-    background: rgba(255,255,255,0.66);
-    border: 1px solid #E2DCF1; border-radius: 12px;
+.region-chip {{
+    background: {_SURFACE};
+    border: 1px solid {_LINE}; border-radius: 8px;
     padding: 0.55rem 0.75rem; margin-bottom: 0.45rem;
-    box-shadow: 0 1px 6px rgba(110,91,181,0.06);
-}
-.region-chip-name {
-    font-weight: 700; font-size: 0.88rem; color: #2D2A3A;
+}}
+.region-chip-name {{
+    font-weight: 700; font-size: 0.87rem; color: {_INK};
     margin-bottom: 0.2rem;
-}
-.region-chip-meta {
+}}
+.region-chip-meta {{
     display: flex; align-items: center; justify-content: space-between;
-    gap: 0.4rem; font-size: 0.72rem; color: #6E5BB5;
-}
-.region-chip-tag {
+    gap: 0.4rem; font-size: 0.72rem; color: {_INK_SOFT};
+}}
+.region-chip-tag {{
     font-size: 0.62rem; font-weight: 700; letter-spacing: 0.3px;
     text-transform: uppercase; color: #FFFFFF;
-    padding: 0.08rem 0.4rem; border-radius: 5px; white-space: nowrap;
-}
+    padding: 0.08rem 0.4rem; border-radius: 4px; white-space: nowrap;
+}}
 /* Nudge the "✕" remove button to align with the taller two-line chip */
-div[data-testid="stSidebar"] div[data-testid="column"]:has(button[kind]) button {
+div[data-testid="stSidebar"] div[data-testid="column"]:has(button[kind]) button {{
     margin-top: 0.55rem;
-}
+}}
 
-/* ---- Rotating-brain loader (reusable + first-load splash) ------------ */
-@keyframes brainspin {
-    0%   { transform: rotateY(0deg); }
-    100% { transform: rotateY(360deg); }
-}
-@keyframes slidebar {
-    0%   { margin-left: -45%; }
-    100% { margin-left: 100%; }
-}
-.brain-loader-wrap {
+/* ---- Loading state: a plain indeterminate bar, no mascot -------------- */
+@keyframes slidebar {{
+    0%   {{ margin-left: -45%; }}
+    100% {{ margin-left: 100%; }}
+}}
+.brain-loader-wrap {{
     display: flex; flex-direction: column; align-items: center;
-    justify-content: center; padding: 2.6rem 0; gap: 0.9rem;
-}
-.brain-loader-wrap .spin {
-    font-size: 74px; display: inline-block; line-height: 1;
-    animation: brainspin 1.5s linear infinite;
-    filter: drop-shadow(0 5px 14px rgba(138,111,196,0.40));
-}
-.brain-loader-wrap .msg {
-    color: #6E5BB5; font-weight: 600; letter-spacing: 0.3px;
-}
-.brain-loader-wrap .track {
-    width: 230px; height: 6px; border-radius: 999px;
-    background: #E2DCF1; overflow: hidden;
-}
-.brain-loader-wrap .track .bar {
-    height: 100%; width: 45%; border-radius: 999px;
-    background: linear-gradient(90deg, #8A6FC4, #C77FB4);
-    animation: slidebar 1.4s ease-in-out infinite;
-}
+    justify-content: center; padding: 2.2rem 0; gap: 0.7rem;
+}}
+.brain-loader-wrap .msg {{
+    color: {_INK_SOFT}; font-weight: 600; letter-spacing: 0.2px; font-size: 0.9rem;
+}}
+.brain-loader-wrap .track {{
+    width: 220px; height: 5px; border-radius: 999px;
+    background: {_LINE_SOFT}; overflow: hidden;
+}}
+.brain-loader-wrap .track .bar {{
+    height: 100%; width: 40%; border-radius: 999px;
+    background: {_ACCENT};
+    animation: slidebar 1.3s ease-in-out infinite;
+}}
 
-/* Replace Streamlit's built-in first-load sport icons with a brain */
+/* Replace Streamlit's built-in first-load icons with a plain neutral bar */
 [data-testid="stSkeleton"],
 .stApp [class*="loading"] svg,
 .stApp [class*="Loading"] svg,
-div[data-testid="stDecoration"],
-div[class*="loaderContainer"] svg,
-div[class*="loaderContainer"] img,
-div[class*="LoadingContainer"] svg,
-div[class*="LoadingContainer"] img { display: none !important; }
-div[class*="loaderContainer"]::before,
-div[class*="LoadingContainer"]::before {
-    content: "🧠"; font-size: 72px; display: block; text-align: center;
-    animation: brainspin 1.5s linear infinite;
-}
-
-/* ---- Top-right "Running…" indicator → spinning brain (was a runner) -- */
-[data-testid="stStatusWidgetRunningIcon"] svg,
-[data-testid="stStatusWidgetRunningManIcon"] { display: none !important; }
-[data-testid="stStatusWidgetRunningIcon"]::before {
-    content: "🧠"; font-size: 1.55rem; line-height: 1;
-    display: inline-block; transform-origin: center;
-    animation: brainspin 1.4s linear infinite;
-}
+div[data-testid="stDecoration"] {{ display: none !important; }}
 
 /* ---- Remove the Deploy button (not relevant for local use) ---------- */
-[data-testid="stAppDeployButton"] { display: none !important; }
+[data-testid="stAppDeployButton"] {{ display: none !important; }}
 
-/* ---- View Mode: dress the default radio group up as a segmented control */
-div[data-testid="stRadio"] > div[role="radiogroup"] {
-    display: inline-flex; flex-wrap: wrap; gap: 0.3rem;
-    background: #EDEAF7; border: 1px solid #E0DCEF;
-    border-radius: 999px; padding: 0.3rem;
-}
-div[data-testid="stRadio"] label {
-    border-radius: 999px; padding: 0.3rem 0.9rem !important; margin: 0 !important;
-    transition: all 0.15s ease; cursor: pointer;
-}
-div[data-testid="stRadio"] label:hover { background: rgba(255,255,255,0.6); }
-div[data-testid="stRadio"] label:has(input:checked) {
-    background: linear-gradient(90deg, #6E5BB5 0%, #9A6FC9 100%);
-    box-shadow: 0 2px 8px rgba(110,91,181,0.35);
-}
-div[data-testid="stRadio"] label:has(input:checked) p {
+/* ---- View Mode: segmented control, solid active state (no gradient) -- */
+div[data-testid="stRadio"] > div[role="radiogroup"] {{
+    display: inline-flex; flex-wrap: wrap; gap: 0.25rem;
+    background: {_SURFACE_SUNKEN}; border: 1px solid {_LINE};
+    border-radius: 8px; padding: 0.25rem;
+}}
+div[data-testid="stRadio"] label {{
+    border-radius: 6px; padding: 0.3rem 0.9rem !important; margin: 0 !important;
+    transition: background 0.12s ease; cursor: pointer;
+}}
+div[data-testid="stRadio"] label:hover {{ background: rgba(61,52,128,0.06); }}
+div[data-testid="stRadio"] label:has(input:checked) {{
+    background: {_ACCENT};
+}}
+div[data-testid="stRadio"] label:has(input:checked) p {{
     color: #FFFFFF !important; font-weight: 700;
-}
+}}
 
-/* ---- Expanders (view guide, methods panel): card-style chrome -------- */
-div[data-testid="stExpander"] {
-    border: 1px solid #E2DCF1 !important; border-radius: 14px !important;
-    background: rgba(255,255,255,0.55); box-shadow: 0 2px 10px rgba(110,91,181,0.06);
+/* ---- Expanders: flat card chrome, no blur/glow -------------------- */
+div[data-testid="stExpander"] {{
+    border: 1px solid {_LINE} !important; border-radius: 10px !important;
+    background: {_SURFACE}; box-shadow: none;
     overflow: hidden;
-}
-div[data-testid="stExpander"] summary {
-    font-weight: 600; color: #4B4368;
-}
+}}
+div[data-testid="stExpander"] summary {{
+    font-weight: 600; color: {_INK};
+}}
 
-/* ---- Respect prefers-reduced-motion (WCAG 2.3.3): the spinning brain,   */
-/* shimmer bar, and loader animations can trigger vestibular discomfort.  */
-@media (prefers-reduced-motion: reduce) {
-    .brain-hero .brain-icon,
-    .sidebar-brain .spin,
-    .brain-loader-wrap .spin,
-    .brain-loader-wrap .track .bar,
-    .aff-fill::after,
-    div[class*="loaderContainer"]::before,
-    div[class*="LoadingContainer"]::before,
-    [data-testid="stStatusWidgetRunningIcon"]::before {
-        animation: none !important;
-    }
-}
+/* ---- Respect prefers-reduced-motion (WCAG 2.3.3) ---------------------- */
+@media (prefers-reduced-motion: reduce) {{
+    .brain-loader-wrap .track .bar {{ animation: none !important; }}
+}}
 </style>
 """
 
@@ -247,12 +260,13 @@ def inject_theme():
 def render_hero_header():
     st.markdown(
         """
-        <div class="brain-hero">
-            <span class="brain-icon">🧠</span>
-            <h1>Neuro-Target Affinity Visualizer</h1>
-            <div class="subtitle">Visualize protein / target binding affinity across brain regions</div>
-            <div class="byline">🔬 Made by <b>Ayoub Riad</b> &nbsp;·&nbsp; Researcher in Bioinformatics</div>
-            <hr/>
+        <div class="app-header">
+            <span class="mark">🧠</span>
+            <div>
+                <h1>Neuro-Target Affinity Visualizer</h1>
+                <div class="subtitle">Visualize protein / target binding affinity across brain regions</div>
+                <div class="byline">Made by <b>Ayoub Riad</b> &nbsp;·&nbsp; Researcher in Bioinformatics</div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -261,16 +275,16 @@ def render_hero_header():
 
 def render_sidebar_brain_icon():
     st.markdown(
-        '<div class="sidebar-brain"><span class="spin">🧠</span></div>',
+        '<div class="sidebar-mark"><span class="glyph">🧠</span>'
+        '<span class="label">NeuroViz</span></div>',
         unsafe_allow_html=True,
     )
 
 
 def brain_loader_html(message):
-    """A centered, rotating-brain spinner with an indeterminate progress bar."""
+    """A centered, indeterminate progress bar with a status message."""
     return (
         '<div class="brain-loader-wrap">'
-        '<span class="spin">🧠</span>'
         f'<div class="msg">{message}</div>'
         '<div class="track"><div class="bar"></div></div>'
         '</div>'
