@@ -168,15 +168,45 @@ express "this one exact spot."
 - The AI interpretation prompt and the region chip/summary UI both handle
   this case explicitly rather than mislabeling it as "illustrative."
 
+## Receptor density weighting
+
+**Problem**: affinity is painted uniformly across a whole selected region,
+implying the target is equally present everywhere in it - not generally true,
+and something two compounds with identical affinity on the same receptor
+would still show identically, even if the real receptor is concentrated in
+very different places for each.
+
+- New module [`receptor_atlas.py`](receptor_atlas.py): fetches 18 real,
+  published PET-derived receptor/transporter density maps (Hansen, Shafiei et
+  al. 2022, Nature Neuroscience) via the `neuromaps` package, resampled onto
+  this app's MNI152 2mm grid the same way the Pauli 2017 atlas already is.
+  Covers dopamine (D1, D2, DAT), norepinephrine (NET), serotonin (5-HT1a/1b/
+  2a/4, 5-HTT), acetylcholine (VAChT, α4β2, M1), glutamate (mGluR5, NMDA),
+  GABAa, histamine (H3), cannabinoid (CB1), and opioid (MOR) systems.
+- New optional sidebar section, **"Receptor Weighting"**: pick a target, and
+  `visualization.create_activation_volume` multiplies the raw affinity volume
+  by that receptor's real density (renormalized so the display-threshold
+  slider's semantics stay unchanged) instead of leaving the whole region
+  uniform.
+- The Methods & provenance panel and the AI-interpretation prompt both
+  explicitly note when weighting is active and cite the specific tracer
+  study + Hansen et al. 2022, so neither a downloaded report nor the AI
+  interpretation can imply the map is affinity-only when it isn't.
+- **License note**: this data is CC BY-NC-SA 4.0 (non-commercial, attribution
+  required) - see [`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md)
+  for the full design write-up, citation requirements, and how to add another
+  receptor/tracer.
+
 ---
 
 ## Numbers
 
 | Metric | Before | After |
 |---|---|---|
-| Tests | 0 | 57 (all passing, zero real network calls) |
-| `app.py` size | 587 lines, monolithic | ~40 lines, 13 focused modules |
+| Tests | 0 | 61 (all passing, zero real network calls) |
+| `app.py` size | 587 lines, monolithic | ~40 lines, 14 focused modules |
 | Ruff/mypy findings | unmeasured | 0 across all first-party modules |
 | Regions on a real cited atlas | 0 / 25 | 28 / 28 (0 illustrative) |
+| Receptor/transporter density maps available | 0 | 18 (real PET data, optional weighting) |
 | "3D Surface" repeat-render time | ~19-35s | ~0.1-1s |
 | CI | none | GitHub Actions (lint + type-check + test) |

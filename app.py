@@ -29,7 +29,7 @@ inject_theme()
 render_hero_header()
 init_state()
 
-threshold, surf_mesh, mpl_cmap = render_sidebar()
+threshold, surf_mesh, mpl_cmap, receptor_weight = render_sidebar()
 ai_config = render_ai_sidebar_config()
 
 view_mode = render_view_mode_selector()
@@ -39,12 +39,12 @@ regions = get_regions()
 render_subcortical_warning(regions, view_mode)
 
 if regions:
-    fig = render_main_view(regions, view_mode, threshold, surf_mesh, mpl_cmap)
+    fig = render_main_view(regions, view_mode, threshold, surf_mesh, mpl_cmap, receptor_weight)
     render_affinity_summary(regions)
     render_interpretation(regions)
-    render_ai_interpretation(regions, ai_config)
-    render_methods_panel(threshold, surf_mesh, mpl_cmap)
-    render_export_buttons(fig, regions, threshold, surf_mesh, mpl_cmap)
+    render_ai_interpretation(regions, ai_config, receptor_weight)
+    render_methods_panel(threshold, surf_mesh, mpl_cmap, receptor_weight)
+    render_export_buttons(fig, regions, threshold, surf_mesh, mpl_cmap, receptor_weight)
     if fig is not None:
         plt.close(fig)
 else:

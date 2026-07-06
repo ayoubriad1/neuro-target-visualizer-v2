@@ -13,6 +13,7 @@ from atlas_regions import ATLAS_CITATIONS, ATLAS_REGIONS, get_atlas_source
 from brain_regions import get_region_names
 from config import DEFAULT_SIGMA, KCAL_MAX, KCAL_MIN, SURFACE_SIGMA
 from models import RegionEntry, strength_label
+from receptor_atlas import HANSEN_2022_CITATION, get_receptor_citation
 
 
 def render_affinity_summary(regions: list[RegionEntry]):
@@ -111,7 +112,24 @@ def _renderer_versions() -> str:
         return "n/a"
 
 
-def _methods_text(threshold: float, surf_mesh: str, mpl_cmap: str = "YlOrRd") -> str:
+def _receptor_weighting_note(receptor_weight: str | None) -> str:
+    if receptor_weight is None:
+        return ""
+    citation = get_receptor_citation(receptor_weight)
+    return f"""
+**Receptor density weighting** — this map is additionally weighted by the
+real, published PET-derived density of **{receptor_weight}** across the
+brain (not a simulation): the raw affinity volume above is multiplied
+voxel-by-voxel by this density (renormalized so the peak stays at 100 %), so
+regions with the same nominal affinity can appear stronger or weaker
+depending on how much of the target receptor/transporter is actually there.
+Source: {citation}. Compiled via {HANSEN_2022_CITATION}. This is a
+**structural** density map — real receptor availability, not a guarantee of
+functional effect."""
+
+
+def _methods_text(threshold: float, surf_mesh: str, mpl_cmap: str = "YlOrRd",
+                  receptor_weight: str | None = None) -> str:
     all_names = get_region_names()
     n_total = len(all_names)
     n_atlas = len(ATLAS_REGIONS)
@@ -166,19 +184,21 @@ atlas** (masks fetched at build/run time, not redrawn by hand):
 |---|---|
 {atlas_table}
 {illustrative_note}
+{_receptor_weighting_note(receptor_weight)}
 
 See **`ENHANCEMENT_REPORT.md`** for exact citations and the remaining roadmap.
 """
 
 
-def render_methods_panel(threshold: float, surf_mesh: str, mpl_cmap: str = "YlOrRd"):
+def render_methods_panel(threshold: float, surf_mesh: str, mpl_cmap: str = "YlOrRd",
+                         receptor_weight: str | None = None):
     st.divider()
     with st.expander("🔬 Methods & provenance (for reproducibility)", expanded=False):
-        st.markdown(_methods_text(threshold, surf_mesh, mpl_cmap))
+        st.markdown(_methods_text(threshold, surf_mesh, mpl_cmap, receptor_weight))
 
 
 def build_report_markdown(regions: list[RegionEntry], threshold: float, surf_mesh: str,
-                          mpl_cmap: str = "YlOrRd") -> str:
+                          mpl_cmap: str = "YlOrRd", receptor_weight: str | None = None) -> str:
     """Self-contained markdown report (affinity table + interpretation +
     methods/provenance) for the "Download report" button in app.py.
     """
@@ -194,12 +214,12 @@ Generated {generated}
 {_interpretation_text(regions)}
 
 ## Methods & Provenance
-{_methods_text(threshold, surf_mesh, mpl_cmap)}
+{_methods_text(threshold, surf_mesh, mpl_cmap, receptor_weight)}
 """
 
 
 def render_export_buttons(fig, regions: list[RegionEntry], threshold: float, surf_mesh: str,
-                          mpl_cmap: str = "YlOrRd"):
+                          mpl_cmap: str = "YlOrRd", receptor_weight: str | None = None):
     """Download buttons: a high-res PNG of the current static figure (only
     for the 3 matplotlib-based views - the two WebGL/HTML interactive views
     already have their own built-in camera-icon export), and a markdown
@@ -221,7 +241,7 @@ def render_export_buttons(fig, regions: list[RegionEntry], threshold: float, sur
     else:
         col1.caption("This interactive view exports via its own camera-icon toolbar button.")
 
-    report = build_report_markdown(regions, threshold, surf_mesh, mpl_cmap)
+    report = build_report_markdown(regions, threshold, surf_mesh, mpl_cmap, receptor_weight)
     col2.download_button(
         "📄 Download report (Markdown)",
         data=report,
