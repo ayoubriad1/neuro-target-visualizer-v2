@@ -4,8 +4,8 @@ centroid, connected by real functional-connectivity edges, with node
 size/color animating through each diffusion step via Plotly frames.
 
 Deliberately a *network graph in brain space*, not another anatomical brain
-render - a cool blue/purple palette (vs. the warm red used everywhere else
-for directly-entered/measured affinity) and a distinct node shape for the
+render - a cool blue/teal palette (vs. the warm red used everywhere else
+for directly-entered/measured affinity) and a gold-ringed marker for the
 directly-selected "source" region(s) keep this visually unmistakable as a
 different kind of view: an estimated propagation model, not a measurement.
 """
@@ -17,8 +17,15 @@ from connectome import region_centroids, simulate_diffusion
 from models import RegionEntry
 
 _EDGE_THRESHOLD = 0.3
-_NODE_BASE_SIZE = 8.0
+_NODE_BASE_SIZE = 10.0
 _NODE_MAX_SIZE = 40.0
+_SEED_SIZE = 34.0
+_SEED_COLOR = "#F2B84B"  # fixed gold - the seed's own value never meaningfully
+                        # animates (the restart term keeps re-injecting it every
+                        # step), so it gets a distinct fixed marker instead of
+                        # competing for the same color/size scale as the
+                        # propagated regions, which is the part that's actually
+                        # supposed to be visible animating.
 _COOL_COLORSCALE = [
     [0.0, "#2B2A3D"],   # inactive -> dark neutral (reads on the light page bg via marker fill)
     [0.15, "#3A4E8C"],
@@ -102,22 +109,40 @@ def build_propagation_animation(regions: list[RegionEntry], height: int = 560) -
 
     selected_names = {r.name for r in regions if r.coordinates is None}
     coords = np.array([centroids[n] for n in names])
-    global_max = max(max(step[n] for n in names) for step in steps) or 1.0
+
+    # The seed region(s)' own value barely changes across steps (the
+    # restart term keeps re-injecting the original input every iteration),
+    # so scaling size/color against the *global* max - dominated by the
+    # seed sitting near 1.0 - squeezed every propagated region's real
+    # variation into a sliver of the visual range, making the animation
+    # look frozen. Scaling against the propagated (non-seed) regions' own
+    # max instead gives the part that's actually supposed to animate the
+    # full visual range; the seed gets a fixed size/is clipped to the top
+    # color instead of competing for the same scale.
+    propagated_max = max(
+        (step[n] for step in steps for n in names if n not in selected_names),
+        default=0.0,
+    ) or 1e-9
 
     def marker_for(step: dict[str, float]) -> dict:
         values = np.array([step[n] for n in names])
-        sizes = _NODE_BASE_SIZE + (_NODE_MAX_SIZE - _NODE_BASE_SIZE) * (values / global_max)
+        ratios = np.clip(values / propagated_max, 0.0, 1.0)
+        sizes = _NODE_BASE_SIZE + (_NODE_MAX_SIZE - _NODE_BASE_SIZE) * ratios
+        colors = np.clip(values, 0.0, propagated_max)
+        for i, n in enumerate(names):
+            if n in selected_names:
+                sizes[i] = _SEED_SIZE
         return dict(
-            size=sizes, color=values, cmin=0.0, cmax=global_max,
+            size=sizes, color=colors, cmin=0.0, cmax=propagated_max,
             colorscale=_COOL_COLORSCALE, showscale=True,
-            colorbar=dict(title="Activation", len=0.6, thickness=14),
+            colorbar=dict(title="Propagated<br>activation", len=0.6, thickness=14),
             # scatter3d.marker.line.width is scalar-only (unlike .color, which
             # accepts a per-point array) - a uniform width with a transparent
             # vs. gold per-point color still renders a highlighted ring only
             # around the directly-selected "source" region(s).
             line=dict(
-                color=["#F2B84B" if n in selected_names else "rgba(0,0,0,0)" for n in names],
-                width=3,
+                color=[_SEED_COLOR if n in selected_names else "rgba(0,0,0,0)" for n in names],
+                width=4,
             ),
         )
 
@@ -149,8 +174,8 @@ def build_propagation_animation(regions: list[RegionEntry], height: int = 560) -
             pad=dict(t=4, r=4),
             buttons=[
                 dict(label="▶ Play", method="animate",
-                     args=[None, dict(frame=dict(duration=600, redraw=True),
-                                      fromcurrent=True, transition=dict(duration=200))]),
+                     args=[None, dict(frame=dict(duration=1000, redraw=True),
+                                      fromcurrent=True, transition=dict(duration=500, easing="linear"))]),
                 dict(label="⏸ Pause", method="animate",
                      args=[[None], dict(frame=dict(duration=0, redraw=False), mode="immediate")]),
             ],

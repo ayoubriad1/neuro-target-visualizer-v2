@@ -118,7 +118,7 @@ def region_centroids() -> dict[str, tuple[float, float, float]]:
     return centroids
 
 
-_DEFAULT_N_STEPS = 8
+_DEFAULT_N_STEPS = 4
 _DEFAULT_RESTART_PROB = 0.5
 
 

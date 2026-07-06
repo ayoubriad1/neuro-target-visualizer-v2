@@ -15,7 +15,7 @@ def test_build_propagation_animation_has_one_frame_per_diffusion_step():
     regions = [make_region_entry("Striatum (Putamen)", -12.0)]
     fig = build_propagation_animation(regions)
     assert fig is not None
-    assert len(fig.frames) == 9  # step 0 (raw input) + 8 diffusion iterations
+    assert len(fig.frames) == 5  # step 0 (raw input) + 4 diffusion iterations
     assert len(fig.data) == 3  # brain shell + edges trace + nodes trace
 
 

@@ -106,10 +106,21 @@ space** rather than another anatomical brain render:
 **"Step" is not real time.** It's a discrete iteration count in an abstract
 diffusion model - it has no established mapping to seconds, minutes, or any
 real pharmacokinetic timescale. The UI states this explicitly next to the
-Play/step-slider controls. The simulation typically converges to a stable
-pattern within a handful of steps (expected for a restart-based diffusion
-on a small, densely-connected 28-node graph) - most of the visible "spread"
-happens in the first 2-3 steps, then the network settles.
+Play/step-slider controls. The simulation reliably converges to a stable
+pattern within 2-3 steps on this small, densely-connected 28-node graph
+(true regardless of the restart probability - fast mixing is an inherent
+property of a small, well-connected network, not a tuning artifact) -
+`simulate_diffusion`'s default `n_steps=4` was chosen to match that, rather
+than padding the animation with steps that no longer show any real change.
+
+**Display scaling**: node size/color are normalized against the
+*propagated* (non-seed) regions' own value range, not the global range. The
+seed region's value stays near its fixed input level throughout (the
+restart term keeps re-injecting it every step), so scaling against a range
+that includes it would squeeze all the actually-interesting propagated
+variation into a barely-visible sliver - the seed instead gets a fixed
+marker size and is clipped to the top of the colorscale, and is already
+distinguished by its gold ring.
 
 **Known simplification**: several atlas regions (e.g. "Striatum (Putamen)")
 represent a **bilateral** mask (left + right hemisphere combined, matching
