@@ -106,36 +106,13 @@ def render_interpretation(regions: list[RegionEntry]):
     st.markdown(_interpretation_text(regions))
 
 
-def render_spatial_test(regions: list[RegionEntry], receptor_weight: str | None):
-    """Only renders when receptor weighting is active AND at least
-    MIN_REGIONS selected regions have a usable density value - silently
-    does nothing otherwise (e.g. too few regions, or weighting disabled),
-    rather than show an empty/misleading section.
-    """
-    text = _spatial_test_text(regions, receptor_weight)
-    if not text:
-        return
-    st.divider()
-    st.subheader("🧪 Spatial correspondence test")
-    st.caption(
-        f"Only shown when receptor weighting is active and at least "
-        f"{MIN_REGIONS} selected regions have a usable density value."
-    )
-    st.markdown(text)
-
-
-def _spatial_test_text(regions: list[RegionEntry], receptor_weight: str | None) -> str:
-    """Empty string if there's nothing to report (no weighting active, or
-    too few regions with a usable density value) - callers should skip
-    rendering the section entirely in that case rather than show an empty
-    header.
-    """
+def _spatial_test_result(regions: list[RegionEntry], receptor_weight: str | None):
     if receptor_weight is None:
-        return ""
-    result = compute_spatial_correlation(tuple(regions), receptor_weight)
-    if result is None:
-        return ""
+        return None
+    return compute_spatial_correlation(tuple(regions), receptor_weight)
 
+
+def _spatial_test_summary(result) -> str:
     direction = "positive" if result.r > 0 else "negative"
     strength = "strong" if abs(result.r) >= 0.5 else "moderate" if abs(result.r) >= 0.3 else "weak"
     significance = (
@@ -150,9 +127,11 @@ def _spatial_test_text(regions: list[RegionEntry], receptor_weight: str | None) 
 **{result.n_regions}** selected regions with a usable density value, the
 correlation between normalized affinity and real receptor density is
 **r = {result.r:.2f}** ({strength} {direction} correspondence), which is
-{significance} from {result.n_permutations:,} permutations.
+{significance} from {result.n_permutations:,} permutations."""
 
-*Methodology*: this is a **region-resampling permutation test**, not a
+
+def _spatial_test_methodology(result) -> str:
+    return f"""This is a **region-resampling permutation test**, not a
 vertex-level "spin test" — the null distribution comes from swapping in
 random atlas regions (same count as your selection) for the ones you chose,
 not from a spatial-autocorrelation-preserving rotation of a cortical surface
@@ -163,13 +142,37 @@ With only {result.n_regions} data points, treat both r and p as indicative,
 not conclusive."""
 
 
-def _connectome_text(regions: list[RegionEntry]) -> str:
-    """Empty string if there's nothing to report (no selected region has a
-    matrix row, or every candidate's propagated score is non-positive)."""
-    propagated = propagate_effect(regions)
-    if not propagated:
-        return ""
+def render_spatial_test(regions: list[RegionEntry], receptor_weight: str | None):
+    """Only renders when receptor weighting is active AND at least
+    MIN_REGIONS selected regions have a usable density value - silently
+    does nothing otherwise (e.g. too few regions, or weighting disabled),
+    rather than show an empty/misleading section.
+    """
+    result = _spatial_test_result(regions, receptor_weight)
+    if result is None:
+        return
+    st.divider()
+    st.subheader("🧪 Spatial correspondence test")
+    st.caption(
+        f"Only shown when receptor weighting is active and at least "
+        f"{MIN_REGIONS} selected regions have a usable density value."
+    )
+    st.markdown(_spatial_test_summary(result))
+    with st.expander("ℹ️ Methodology & caveats", expanded=False):
+        st.markdown(_spatial_test_methodology(result))
 
+
+def _spatial_test_text(regions: list[RegionEntry], receptor_weight: str | None) -> str:
+    """Combined summary + methodology, for the downloadable report (which
+    has no expander to defer detail into - see render_spatial_test for the
+    on-screen split version). Empty string if there's nothing to report."""
+    result = _spatial_test_result(regions, receptor_weight)
+    if result is None:
+        return ""
+    return f"{_spatial_test_summary(result)}\n\n*Methodology*: {_spatial_test_methodology(result)}"
+
+
+def _connectome_table(propagated) -> str:
     rows = "\n".join(f"| {p.name} | {p.score:.0f}% |" for p in propagated)
     return f"""
 **Predicted downstream regions** (via real functional connectivity, not
@@ -177,9 +180,11 @@ direct binding):
 
 | Region | Propagated effect |
 |---|---|
-{rows}
+{rows}"""
 
-*Methodology*: each region above is one you did **not** select, ranked by a
+
+def _connectome_methodology() -> str:
+    return """Each region above is one you did **not** select, ranked by a
 connectivity-weighted sum of your selected regions' affinities - real
 functional connectivity (see `docs/CONNECTOME_PROPAGATION.md`) times how
 strongly you rated the region(s) it connects to, only counting positive
@@ -190,65 +195,79 @@ through known circuits, **not** a measured or simulated pharmacokinetic
 result. Treat it as a hypothesis-generation aid, not a prediction."""
 
 
+def _connectome_animation_notes() -> str:
+    return """Each node is one atlas region at its real MNI location; the
+gold-ringed node(s) are what you selected. **"Step" is an abstract diffusion
+iteration, not real elapsed time** - it has no defined relationship to
+seconds, minutes, or a real pharmacokinetic timescale. The gold **arrows**
+point from your single strongest-affinity region to every other region it
+has real, above-threshold functional connectivity to — functional
+connectivity is itself symmetric, so "directed" here means *drawn outward
+from the main region for legibility*, not a claim about anatomical or
+causal direction."""
+
+
+def _connectome_text(regions: list[RegionEntry]) -> str:
+    """Combined table + methodology, for the downloadable report (which has
+    no expander to defer detail into - see render_connectome_propagation for
+    the on-screen split version). Empty string if there's nothing to report
+    (no selected region has a matrix row, or every candidate's propagated
+    score is non-positive)."""
+    propagated = propagate_effect(regions)
+    if not propagated:
+        return ""
+    return f"{_connectome_table(propagated)}\n\n*Methodology*: {_connectome_methodology()}"
+
+
 def render_connectome_propagation(regions: list[RegionEntry]):
     """Deliberately its own section, separate from the 3-D brain render
     above - a linear circuit-propagation estimate should never be visually
     blended into the same heatmap as directly-measured/entered affinity, to
     avoid it being mistaken for part of the same measurement.
     """
-    text = _connectome_text(regions)
-    if not text:
+    propagated = propagate_effect(regions)
+    if not propagated:
         return
     st.divider()
     st.subheader("🔗 Circuit propagation (experimental)")
     st.caption(
-        "An effect rarely stays confined to where it binds - it propagates "
-        "through functional circuits. This section estimates where, using "
-        "real (not simulated) functional connectivity."
+        "An effect rarely stays confined to where it binds - estimated here "
+        "from real (not simulated) functional connectivity."
     )
-    st.markdown(text)
+    st.markdown(_connectome_table(propagated))
+    with st.expander("ℹ️ Methodology & caveats", expanded=False):
+        st.markdown(_connectome_methodology())
 
     fig = build_propagation_animation(regions)
     if fig is not None:
-        st.caption(
-            "🔵 Animated network view — each node is one atlas region at its real MNI "
-            "location; the gold-ringed node(s) are what you selected. Press **▶ Play** "
-            "or drag the **Step** slider to watch the estimated signal spread. "
-            "**\"Step\" is an abstract diffusion iteration, not real elapsed time** - "
-            "it has no defined relationship to seconds, minutes, or a real "
-            "pharmacokinetic timescale. The gold **arrows** point from your single "
-            "strongest-affinity region to every other region it has real, "
-            "above-threshold functional connectivity to — functional connectivity is "
-            "itself symmetric, so \"directed\" here means *drawn outward from the main "
-            "region for legibility*, not a claim about anatomical or causal direction."
-        )
+        st.caption("🔵 Animated network view — press **▶ Play** or drag the **Step** slider.")
         st.plotly_chart(fig, width="stretch")
+        with st.expander("ℹ️ About this animation", expanded=False):
+            st.markdown(_connectome_animation_notes())
 
 
-def _functional_interpretation_text(regions: list[RegionEntry]) -> str:
-    """Empty string if none of the selected regions have a curated functional
-    profile (region_function.py) - e.g. only "Custom (x, y, z)" exact-
-    coordinate entries were selected, which have no region name to look up.
-    """
+def _functional_profiled(regions: list[RegionEntry]) -> list[tuple[RegionEntry, FunctionalProfile]]:
     profiled: list[tuple[RegionEntry, FunctionalProfile]] = []
     for r in regions:
         profile = get_functional_profile(r.name)
         if profile is not None:
             profiled.append((r, profile))
-    if not profiled:
-        return ""
+    return profiled
 
+
+def _functional_domain_summary(profiled: list[tuple[RegionEntry, FunctionalProfile]]) -> str:
     domains_touched: dict[str, set[str]] = {}
     for r, p in profiled:
         for domain in p.domains:
             domains_touched.setdefault(domain, set()).add(r.name)
-
-    domain_summary = "\n".join(
+    return "\n".join(
         f"- **{domain}** — via {', '.join(sorted(names))}"
         for domain, names in sorted(domains_touched.items())
     )
 
-    per_region = "\n\n".join(
+
+def _functional_per_region(profiled: list[tuple[RegionEntry, FunctionalProfile]]) -> str:
+    return "\n\n".join(
         f"""**{r.name}** ({', '.join(p.domains)})
 {p.description}
 - *If stimulated (increased activity)*: {p.stimulation_effect}
@@ -257,21 +276,38 @@ def _functional_interpretation_text(regions: list[RegionEntry]) -> str:
         for r, p in sorted(profiled, key=lambda rp: rp[0].normalized_intensity, reverse=True)
     )
 
+
+def _functional_caveat() -> str:
+    return """Based on the functional domain(s) associated with your selected
+region(s), here is what the literature reports for **increasing** vs.
+**decreasing** activity at each site. **These are the classically-reported
+associations from lesion studies, direct stimulation mapping, or DBS trials
+— not a deterministic prediction of what your specific compound will do**
+at that site (that additionally depends on whether it acts as an agonist or
+antagonist there, and on dose/exposure). Treat every line as a hypothesis to
+weigh, not a guarantee."""
+
+
+def _functional_interpretation_text(regions: list[RegionEntry]) -> str:
+    """Combined caveat + domain summary + per-region detail, for the
+    downloadable report (which has no expander to defer detail into - see
+    render_functional_interpretation for the on-screen split version).
+    Empty string if none of the selected regions have a curated functional
+    profile (region_function.py) - e.g. only "Custom (x, y, z)" exact-
+    coordinate entries were selected, which have no region name to look up.
+    """
+    profiled = _functional_profiled(regions)
+    if not profiled:
+        return ""
     return f"""
-Based on the functional domain(s) associated with your selected region(s), here
-is what the literature reports for **increasing** vs. **decreasing** activity at
-each site. **These are the classically-reported associations from lesion
-studies, direct stimulation mapping, or DBS trials — not a deterministic
-prediction of what your specific compound will do** at that site (that
-additionally depends on whether it acts as an agonist or antagonist there, and
-on dose/exposure). Treat every line as a hypothesis to weigh, not a guarantee.
+{_functional_caveat()}
 
 **Functional domain(s) engaged by your selection:**
-{domain_summary}
+{_functional_domain_summary(profiled)}
 
 ---
 
-{per_region}
+{_functional_per_region(profiled)}
 """
 
 
@@ -284,19 +320,21 @@ def render_functional_interpretation(regions: list[RegionEntry]):
     kind of claim than the measured/entered affinity numbers, so it gets its
     own clearly-labeled section rather than being folded into that one.
     """
-    text = _functional_interpretation_text(regions)
-    if not text:
+    profiled = _functional_profiled(regions)
+    if not profiled:
         return
     st.divider()
     st.subheader("🧭 Functional & symptomatic interpretation")
     st.caption(
-        "What increasing vs. decreasing activity at each selected region is "
-        "classically associated with - motor, spatiotemporal, emotional, "
-        "reward, sensory, executive, or autonomic effects. An effect can also "
-        "reach other functions indirectly through circuit connections - see "
-        "🔗 Circuit propagation above for which other regions it might spread to."
+        "What stimulating/inhibiting each region is classically associated "
+        "with. See 🔗 Circuit propagation above for indirect effects."
     )
-    st.markdown(text)
+    st.markdown(
+        f"**Functional domain(s) engaged by your selection:**\n"
+        f"{_functional_domain_summary(profiled)}\n\n---\n\n{_functional_per_region(profiled)}"
+    )
+    with st.expander("ℹ️ Methodology & caveats", expanded=False):
+        st.markdown(_functional_caveat())
 
 
 def _renderer_versions() -> str:

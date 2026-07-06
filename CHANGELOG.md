@@ -322,20 +322,61 @@ associated with* at the symptom/domain level.
   outward from that region for legibility, not an anatomical/causal
   directionality claim (stated explicitly in the UI caption).
 
+## Session save/load, automatic PDB resolution, and an interface pass
+
+**Problem**: a CSV row with only a `pdb_id` (no `protein`/`gene`) had no
+resolution path short of using the separate RCSB lookup tool by hand; there
+was no way to persist or hand off a specific analysis without a screenshot;
+and the sidebar/results had accumulated enough always-visible explanatory
+paragraphs (receptor weighting, spatial test methodology, circuit
+propagation, functional interpretation) that the actual data got crowded
+out - a full design pass was overdue.
+
+- **Automatic PDB → region resolution** (`docking_import.py`): a CSV row
+  missing both `region` and `protein`/`gene` but carrying a `pdb_id` now
+  calls `rcsb_lookup.fetch_pdb_metadata` itself to resolve the gene first
+  (cached 24h, so a PDB ID repeated across several rows only hits the
+  network once), then suggests candidate region(s) from the same curated
+  table - transparently labeled "(gene resolved from PDB `X` via RCSB)" so
+  it's never confused with a value the user typed directly.
+- **Session save/load** (new [`session_io.py`](session_io.py)): downloads
+  the current region list + receptor weighting choice as a small,
+  human-readable JSON file from a new **"💾 Session (save / load)"** sidebar
+  section, and loading one back replaces the current analysis exactly -
+  reproducing the same rendered map deterministically. Deliberately excludes
+  the AI provider/API key, matching this app's BYOK/never-persisted posture
+  for those fields.
+- **Interface pass**: long always-visible caption paragraphs across the
+  sidebar (Import, RCSB lookup, Vina, exact-coordinates mode) moved into
+  each widget's `help=` tooltip - the sidebar now reads as a short list of
+  controls, full detail one hover away rather than permanently on-screen.
+  The three longest results-section write-ups (spatial correspondence test,
+  circuit propagation, functional interpretation) now show their data/table
+  immediately, with the methodology/caveat paragraph collapsed into an
+  **"ℹ️ Methodology & caveats"** expander directly underneath - nothing
+  removed, the downloadable report still includes the full combined text.
+- Fixed a real Streamlit ordering bug surfaced while building session load:
+  writing `st.session_state` for the Receptor Weighting selectbox's key
+  raised `StreamlitAPIException` because that widget had already been
+  instantiated earlier in the same script run - the session-load section
+  was moved to render (and resolve that key's value) before the selectbox
+  is created.
+
 ---
 
 ## Numbers
 
 | Metric | Before | After |
 |---|---|---|
-| Tests | 0 | 164 (all passing) |
-| `app.py` size | 587 lines, monolithic | ~40 lines, 20 focused modules |
+| Tests | 0 | 180 (all passing) |
+| `app.py` size | 587 lines, monolithic | ~40 lines, 21 focused modules |
 | Ruff/mypy findings | unmeasured | 0 across all first-party modules |
 | Regions on a real cited atlas | 0 / 25 | 28 / 28 (0 illustrative) |
 | Regions with a curated functional profile | 0 | 28 / 28 (motor, emotional, reward, etc.) |
 | Receptor/transporter density maps available | 0 | 18 (real PET data, optional weighting) |
-| Docking result import formats | 0 (manual entry only) | CSV/TSV batch (+ PDB/gene/ligand metadata) + AutoDock Vina |
-| Gene → region lookup | none | 18 curated targets + live RCSB PDB→gene resolution |
+| Docking result import formats | 0 (manual entry only) | CSV/TSV batch (+ PDB/gene/ligand metadata, auto-resolved) + AutoDock Vina |
+| Gene → region lookup | none | 18 curated targets + live RCSB PDB→gene resolution (manual or automatic) |
 | Circuit propagation | none | real 28x28 functional connectivity matrix + directed arrows |
+| Session persistence | none | save/load full analysis as JSON |
 | "3D Surface" repeat-render time | ~19-35s | ~0.1-1s |
 | CI | none | GitHub Actions (lint + type-check + test) |

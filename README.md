@@ -48,6 +48,7 @@ The model is fully rotatable — the same map viewed from above:
 - [AI Interpretation](#ai-interpretation)
 - [Receptor density weighting](#receptor-density-weighting)
 - [Importing docking results](#importing-docking-results)
+- [Saving and loading a session](#saving-and-loading-a-session)
 - [Spatial correspondence test](#spatial-correspondence-test)
 - [Circuit propagation (experimental)](#circuit-propagation-experimental)
 - [Functional & symptomatic interpretation](#functional--symptomatic-interpretation)
@@ -267,6 +268,7 @@ neuroviz-v2/
 ├── gene_region.py         # curated gene/receptor -> atlas region lookup (suggestion only, never auto-picked)
 ├── rcsb_lookup.py         # best-effort RCSB PDB ID -> gene/UniProt metadata fetch (data.rcsb.org)
 ├── region_function.py     # curated per-region functional domains + stimulate/inhibit literature summary
+├── session_io.py          # save/load a full analysis (regions + receptor weighting) as JSON
 ├── connectome.py          # circuit-propagation estimate + diffusion simulation (real functional connectivity)
 ├── connectome_viz.py      # animated Plotly network view + directed arrows from the main affected region
 ├── mni_space.py           # shared MNI152 2mm grid constants
@@ -406,14 +408,21 @@ Instead of clicking **➕ Add Region** by hand for every result, the sidebar's
    the preview table) — `region` is still required, on purpose. **RCSB has
    no brain-region field at all** (checked directly against its live Data
    API): it only exposes structural/genetic facts — gene symbol, UniProt
-   accession, organism. So if a row is missing `region` and its `protein`/
-   `gene` matches one of 18 curated receptor targets (`gene_region.py`, same
-   sources as [receptor weighting](#receptor-density-weighting)), the error
-   message *suggests* candidate region(s) — it never auto-assigns one, the
-   same judgment-call principle as the Vina import below. For a sheet that
-   only has a `pdb_id` column, the **🔎 PDB ID → gene & suggested region
-   (via RCSB)** tool right below the CSV uploader resolves the gene
-   automatically (a real RCSB API call) and shows the same suggestion.
+   accession, organism. So if a row is missing `region`:
+   - and its `protein`/`gene` matches one of 18 curated receptor targets
+     (`gene_region.py`, same sources as
+     [receptor weighting](#receptor-density-weighting)), the error message
+     *suggests* candidate region(s) directly;
+   - and it only has a `pdb_id` (no `protein`/`gene` at all), the import
+     itself calls RCSB automatically to resolve the gene first (cached 24h,
+     so a PDB ID repeated across several rows only hits the network once),
+     then suggests from the same table — labeled "(gene resolved from PDB
+     `X` via RCSB)" so it's never confused with a value you typed directly.
+
+   Either way this is only ever a **suggestion**, never an auto-pick — the
+   same judgment-call principle as the Vina import below. The standalone
+   **🔎 PDB ID → gene & suggested region (via RCSB)** tool right below the
+   CSV uploader does the same one-ID-at-a-time lookup outside of a CSV.
 2. **A single AutoDock Vina result file** (the `.pdbqt` pose output, or the
    plain-text log/table Vina prints) — the best (top-ranked) score is
    extracted and prefilled into the **Binding Affinity** field below, so you
@@ -421,6 +430,25 @@ Instead of clicking **➕ Add Region** by hand for every result, the sidebar's
    association by itself, so you still pick the matching region (or
    receptor, for [weighting](#receptor-density-weighting)) yourself — this
    only removes the copy/retype step, not that judgment call.
+
+---
+
+## Saving and loading a session
+
+The sidebar's **"💾 Session (save / load)"** section (below Active Regions)
+persists or resumes a full analysis — the region list plus the receptor
+weighting choice — as a small, human-readable JSON file
+([`session_io.py`](session_io.py)):
+
+- **💾 Save session** downloads the current state.
+- **Load session** uploads a previously saved (or hand-written) JSON file
+  and **replaces** the current region list and receptor weighting exactly —
+  reproducing the same rendered map deterministically, since rendering is a
+  pure function of these inputs. Malformed or unrecognized entries are
+  reported individually and skipped rather than failing the whole import.
+
+Deliberately excludes the AI provider/API key — those stay session-only,
+matching the [BYOK](#ai-interpretation) posture everywhere else in this app.
 
 ---
 

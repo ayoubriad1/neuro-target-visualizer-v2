@@ -1,4 +1,6 @@
+import docking_import
 from docking_import import parse_csv, parse_vina_score
+from rcsb_lookup import PDBMetadata
 
 
 def test_parse_csv_basic_named_regions():
@@ -132,6 +134,50 @@ def test_parse_csv_missing_region_no_protein_column_unchanged_message():
     result = parse_csv(text)
     assert result.rows == []
     assert result.errors[0] == "Line 2: missing region name (and no x/y/z given)."
+
+
+def test_parse_csv_resolves_gene_from_pdb_id_when_protein_missing(monkeypatch):
+    monkeypatch.setattr(
+        docking_import, "fetch_pdb_metadata",
+        lambda pdb_id: PDBMetadata(pdb_id=pdb_id, gene="DRD2", uniprot_id="P14416",
+                                   title="D2 receptor", organism="Homo sapiens"),
+    )
+    text = "pdb_id,kcal\n6CM4,-9.1\n"
+    result = parse_csv(text)
+    assert result.rows == []
+    assert "gene resolved from PDB 6CM4 via RCSB" in result.errors[0]
+    assert "Striatum (Caudate)" in result.errors[0]
+
+
+def test_parse_csv_pdb_lookup_failure_falls_back_to_base_message(monkeypatch):
+    monkeypatch.setattr(docking_import, "fetch_pdb_metadata", lambda pdb_id: None)
+    text = "pdb_id,kcal\nNOPE1,-9.1\n"
+    result = parse_csv(text)
+    assert result.rows == []
+    assert result.errors[0] == "Line 2: missing region name (and no x/y/z given)."
+
+
+def test_parse_csv_explicit_protein_column_skips_rcsb_lookup(monkeypatch):
+    def _should_not_be_called(pdb_id):
+        raise AssertionError("fetch_pdb_metadata should not be called when protein is given directly")
+
+    monkeypatch.setattr(docking_import, "fetch_pdb_metadata", _should_not_be_called)
+    text = "pdb_id,protein,kcal\n6CM4,DRD2,-9.1\n"
+    result = parse_csv(text)
+    assert result.rows == []
+    assert "gene resolved from PDB" not in result.errors[0]
+    assert "Striatum (Caudate)" in result.errors[0]
+
+
+def test_parse_csv_real_rcsb_lookup_end_to_end():
+    # Real network call to data.rcsb.org (cached 24h by rcsb_lookup.py) -
+    # confirms the whole chain (CSV -> RCSB -> gene -> region suggestion)
+    # works against the live API, not just a mocked stand-in.
+    text = "pdb_id,kcal\n6CM4,-9.1\n"
+    result = parse_csv(text)
+    assert result.rows == []
+    assert "gene resolved from PDB 6CM4 via RCSB" in result.errors[0]
+    assert "Striatum (Caudate)" in result.errors[0]
 
 
 def test_parse_vina_score_from_pdbqt_remark():

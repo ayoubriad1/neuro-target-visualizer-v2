@@ -21,6 +21,14 @@ Two supported inputs:
   association, so the user still has to pick which region/receptor this
   score belongs to - this only saves the copy/retype step, not that
   scientific judgment call.
+
+A row missing `region` (and `x`/`y`/`z`) is never silently dropped without
+help: if it has `protein`/`gene`, that's used directly for the suggestion
+below; if it only has `pdb_id`, this module calls rcsb_lookup.py itself to
+resolve the gene first (cached 24h, so a PDB ID repeated across several rows
+- one structure docked against several regions/ligands - only hits the
+network once), then suggests from the same table. Either way, this is
+always a *suggestion* to confirm, never an auto-pick - see gene_region.py.
 """
 import csv
 import io
@@ -29,6 +37,7 @@ from dataclasses import dataclass, field
 
 from brain_regions import get_region_names
 from gene_region import suggest_regions
+from rcsb_lookup import fetch_pdb_metadata
 
 
 @dataclass(frozen=True)
@@ -48,20 +57,30 @@ class CSVImportResult:
     errors: list[str] = field(default_factory=list)  # one human-readable message per bad row
 
 
-def _missing_region_message(protein: str | None) -> str:
+def _missing_region_message(protein: str | None, pdb_id: str | None) -> str:
     """The base "missing region" error, plus a hand-curated region suggestion
-    when the row's `protein`/`gene` column matches a known receptor target
-    (see gene_region.py) - a hint, never an auto-pick, so the row still gets
-    skipped and the user still has to add a `region` value themselves.
+    when the row's `protein`/`gene` matches a known receptor target (see
+    gene_region.py) - resolved directly from the `protein`/`gene` column if
+    given, or automatically via a live RCSB lookup when only `pdb_id` is
+    present. Either way this is a hint, never an auto-pick - the row still
+    gets skipped and the user still has to add a `region` value themselves.
     """
     base = "missing region name (and no x/y/z given)"
+    resolved_via_rcsb = False
+    if not protein and pdb_id:
+        meta = fetch_pdb_metadata(pdb_id)
+        if meta and meta.gene:
+            protein = meta.gene
+            resolved_via_rcsb = True
+
     if not protein:
         return f"{base}."
+    provenance = f" (gene resolved from PDB {pdb_id} via RCSB)" if resolved_via_rcsb else ""
     candidates = suggest_regions(protein)
     if not candidates:
-        return f"{base} - '{protein}' isn't in this app's gene/receptor lookup table."
+        return f"{base} - '{protein}'{provenance} isn't in this app's gene/receptor lookup table."
     return (
-        f"{base} - '{protein}' is typically associated with: "
+        f"{base} - '{protein}'{provenance} is typically associated with: "
         f"{', '.join(candidates)} (pick one and add it to the region column; "
         "this tool does not auto-assign a region for a receptor's score)."
     )
@@ -130,7 +149,7 @@ def parse_csv(text: str) -> CSVImportResult:
                 f"Custom ({coordinates[0]:.0f}, {coordinates[1]:.0f}, {coordinates[2]:.0f})"
             )
         elif not raw_region:
-            errors.append(f"Line {line_num}: {_missing_region_message(protein)}")
+            errors.append(f"Line {line_num}: {_missing_region_message(protein, pdb_id)}")
             continue
         elif raw_region not in known_names:
             errors.append(
