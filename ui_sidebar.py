@@ -6,15 +6,18 @@ from brain_regions import get_region_names
 from config import COLOR_SCHEMES, DEFAULT_COLOR_SCHEME
 from mni_space import MNI_X_RANGE, MNI_Y_RANGE, MNI_Z_RANGE
 from models import strength_label
+from receptor_atlas import HANSEN_2022_CITATION, RECEPTOR_NAMES, get_receptor_citation
 from state import add_region, clear_regions, get_regions, remove_region
 from styles import render_sidebar_brain_icon
 
 _INPUT_MODE_NAMED = "Named region (atlas-verified)"
 _INPUT_MODE_EXACT = "Exact MNI coordinates (advanced)"
+_NO_RECEPTOR_WEIGHT = "None (uniform affinity, current behavior)"
 
 
-def render_sidebar() -> tuple[float, str, str]:
-    """Renders the full sidebar; returns (threshold, surf_mesh, mpl_cmap) for the main view."""
+def render_sidebar() -> tuple[float, str, str, str | None]:
+    """Renders the full sidebar; returns (threshold, surf_mesh, mpl_cmap,
+    receptor_weight) for the main view."""
     with st.sidebar:
         render_sidebar_brain_icon()
         st.header("Add Brain Region")
@@ -127,4 +130,22 @@ def render_sidebar() -> tuple[float, str, str]:
         )
         mpl_cmap = COLOR_SCHEMES[scheme_name]
 
-    return threshold, surf_mesh, mpl_cmap
+        st.divider()
+        st.header("Receptor Weighting (optional)")
+        receptor_choice = st.selectbox(
+            "Weight affinity by real receptor density",
+            [_NO_RECEPTOR_WEIGHT] + RECEPTOR_NAMES,
+            help="If your compound targets a specific receptor/transporter, "
+                 "weight the affinity map by that target's real, published "
+                 "PET-derived density across the brain instead of painting "
+                 "the whole selected region uniformly - two compounds with "
+                 "the same affinity on the same receptor will then light up "
+                 "differently depending on where that receptor actually sits. "
+                 "Structural density is not a guarantee of functional effect.",
+        )
+        receptor_weight = None if receptor_choice == _NO_RECEPTOR_WEIGHT else receptor_choice
+        if receptor_weight is not None:
+            st.caption(f"📡 {get_receptor_citation(receptor_weight)}")
+            st.caption(f"Compiled via {HANSEN_2022_CITATION}")
+
+    return threshold, surf_mesh, mpl_cmap, receptor_weight

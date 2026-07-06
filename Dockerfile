@@ -58,7 +58,8 @@ COPY --chown=appuser:appuser . .
 # same fetch just happens lazily on the first real request instead (the
 # @st.cache_resource/@st.cache_data decorators handle that transparently).
 RUN (python -c "from nilearn import datasets; datasets.fetch_surf_fsaverage('fsaverage5'); datasets.fetch_surf_fsaverage('fsaverage6')" \
-    && python -c "from atlas_regions import get_region_mask; [get_region_mask(n) for n in ('Thalamus', 'Anterior Cingulate Cortex', 'Substantia Nigra')]") \
+    && python -c "from atlas_regions import get_region_mask; [get_region_mask(n) for n in ('Thalamus', 'Anterior Cingulate Cortex', 'Substantia Nigra')]" \
+    && python -c "from receptor_atlas import get_receptor_density; get_receptor_density('D2 (dopamine receptor)')") \
     || echo "Pre-warm skipped (no network at build time) - will fetch lazily on first request instead."
 
 # 7860 is the conventional port for Hugging Face Spaces' Docker SDK; also

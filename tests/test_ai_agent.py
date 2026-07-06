@@ -30,6 +30,22 @@ def test_build_user_prompt_labels_exact_coordinates():
     assert "not an atlas region" in prompt
 
 
+def test_build_user_prompt_notes_receptor_weighting():
+    regions = [make_region_entry("Thalamus", -9.0)]
+    prompt = build_user_prompt(
+        regions, {"Thalamus": "Harvard-Oxford subcortical"},
+        receptor_weight="D2 (dopamine receptor)",
+    )
+    assert "D2 (dopamine receptor)" in prompt
+    assert "already reflect that weighting" in prompt
+
+
+def test_build_user_prompt_no_receptor_note_when_not_weighted():
+    regions = [make_region_entry("Thalamus", -9.0)]
+    prompt = build_user_prompt(regions, {"Thalamus": "Harvard-Oxford subcortical"})
+    assert "already reflect that weighting" not in prompt
+
+
 def test_generate_interpretation_requires_api_key():
     with pytest.raises(AIAgentError, match="No API key"):
         generate_interpretation("Claude (Anthropic)", "", "claude-haiku-4-5-20251001", "prompt")

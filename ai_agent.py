@@ -51,8 +51,17 @@ class AIAgentError(RuntimeError):
     """Raised for any user-facing failure (missing SDK, bad key, API error)."""
 
 
-def build_user_prompt(regions: list[RegionEntry], atlas_sources: dict[str, str | None]) -> str:
-    lines = ["Selected regions and user-entered affinities:"]
+def build_user_prompt(regions: list[RegionEntry], atlas_sources: dict[str, str | None],
+                      receptor_weight: str | None = None) -> str:
+    lines = []
+    if receptor_weight is not None:
+        lines.append(
+            f"Note: the visualized map is additionally weighted by the real, published "
+            f"PET-derived density of {receptor_weight} across the brain - the intensities "
+            f"below already reflect that weighting, not affinity alone. Take this into "
+            f"account when discussing why regions differ in strength."
+        )
+    lines.append("Selected regions and user-entered affinities:")
     for r in regions:
         source = atlas_sources.get(r.name)
         if source:

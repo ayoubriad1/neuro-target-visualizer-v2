@@ -43,10 +43,14 @@ extend it toward measured, ground-truth-backed analysis.
 ## Scientific scope
 
 The tool is a **visualization aid**. Affinity values are entered by the user; the
-app does not read measured PET or mRNA data and does not perform docking. Rendered
-maps therefore represent **predicted localization and relative strength**, not
-measured receptor occupancy or in-vivo concentration. The kcal/mol → intensity
-mapping is a fixed, documented linear scale over `[-1, -15]` kcal/mol.
+app does not perform docking. Rendered maps represent **predicted localization
+and relative strength**, not measured receptor occupancy or in-vivo
+concentration. The kcal/mol → intensity mapping is a fixed, documented linear
+scale over `[-1, -15]` kcal/mol. Optionally, the map can additionally be
+weighted by a real, published in-vivo PET receptor-density atlas (see
+[`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md)) — that weighting
+is real measured data, but affinity itself is still user-entered, not
+measured or docking-derived.
 
 ## Roadmap (not yet implemented)
 
@@ -56,9 +60,12 @@ faked:
 1. **Molecule input.** Accept a molecule (e.g. SMILES) and compute standard
    descriptors (QED, physicochemical properties, a CNS desirability score) and
    look up measured affinities from curated databases.
-2. **Measured ground truth.** Compare a predicted map against in-vivo PET
-   receptor-density atlases, and quantify agreement with
-   spatial-autocorrelation-preserving null models (spin tests).
+2. ~~**Measured ground truth.**~~ **Partially done** — the map can now be
+   weighted by real in-vivo PET receptor-density atlases (Hansen et al. 2022,
+   18 receptors/transporters; see `docs/RECEPTOR_WEIGHTING.md`). Still open:
+   quantifying agreement between the affinity-only and receptor-weighted maps
+   with spatial-autocorrelation-preserving null models (spin tests), rather
+   than just visualizing the weighted result.
 3. ~~**Full atlas coverage.**~~ **Done** — all 28 regions are now atlas-backed;
    see "Region model" below. Raphe Nuclei, Locus Coeruleus, and Cerebellum
    were dropped entirely (no standard, openly-fetchable atlas exists for any

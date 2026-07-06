@@ -46,6 +46,7 @@ The model is fully rotatable — the same map viewed from above:
 - [Project structure](#project-structure)
 - [Documentation](#documentation)
 - [AI Interpretation](#ai-interpretation)
+- [Receptor density weighting](#receptor-density-weighting)
 - [Scientific scope](#scientific-scope)
 - [Supported brain regions](#supported-brain-regions)
 - [Troubleshooting](#troubleshooting)
@@ -75,6 +76,10 @@ The model is fully rotatable — the same map viewed from above:
   (configurable in the sidebar, never bundled or paid for by this app) to get
   a short, hallucination-guarded interpretation grounded in general
   neuroscience knowledge. See [AI Interpretation](#ai-interpretation) below.
+- **Optional receptor density weighting** — weight the affinity map by one of
+  18 real, published PET-derived receptor/transporter density maps (Hansen et
+  al. 2022), instead of painting a whole region uniformly. See
+  [Receptor density weighting](#receptor-density-weighting) below.
 - Clean, bright, brain-inspired UI. Runs entirely locally.
 
 | 3-D Surface | Glass Brain | Stat Map |
@@ -238,6 +243,7 @@ neuroviz-v2/
 ├── visualization.py       # activation-volume builder + all renderers
 ├── brain_regions.py       # illustrative-point fallback (currently empty - see below) + merged name list
 ├── atlas_regions.py       # 28/28 regions → real atlas masks (Harvard-Oxford, Pauli 2017)
+├── receptor_atlas.py      # 18 PET receptor/transporter density maps (Hansen et al. 2022, via neuromaps)
 ├── mni_space.py           # shared MNI152 2mm grid constants
 ├── requirements.txt       # Python dependencies (lower-bound pins)
 ├── requirements.lock.txt  # exact, hash-verified pins for reproducibility
@@ -274,6 +280,9 @@ roadmap and scope statement live in `ENHANCEMENT_REPORT.md`.
 - **[`docs/AI_AGENT.md`](docs/AI_AGENT.md)** — design notes for the AI
   Interpretation feature specifically: prompt design, BYOK cost model,
   provider abstraction, and testing approach.
+- **[`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md)** — design
+  notes for the receptor density weighting feature: data source, license,
+  the resampling/normalization pipeline, and how to add another receptor.
 
 ---
 
@@ -303,12 +312,43 @@ verification) is sketched in `ENHANCEMENT_REPORT.md` as a future upgrade.
 
 ---
 
+## Receptor density weighting
+
+An optional sidebar section, **"Receptor Weighting"**, lets you weight the
+rendered map by one of **18 real, published PET-derived receptor/transporter
+density maps** (Hansen, Shafiei et al. 2022, Nature Neuroscience, fetched via
+the `neuromaps` package) — dopamine (D1, D2, DAT), norepinephrine (NET),
+serotonin (5-HT1a/1b/2a/4, 5-HTT), acetylcholine (VAChT, α4β2, M1), glutamate
+(mGluR5, NMDA), GABAa, histamine (H3), cannabinoid (CB1), and opioid (MOR).
+
+1. In the sidebar, under **Receptor Weighting (optional)**, pick your
+   compound's target from the dropdown (default: **None**, unchanged
+   behavior — the whole selected region stays uniform).
+2. The affinity volume is multiplied voxel-by-voxel by that target's real
+   density (renormalized so the display-threshold slider keeps working the
+   same way) — regions with identical nominal affinity can now render at
+   different strengths depending on how much of the real receptor is there.
+3. The sidebar caption, the Methods & provenance panel, and the AI
+   interpretation prompt all cite the specific tracer study used, plus
+   Hansen et al. 2022.
+
+**License note**: this PET data is released under **CC BY-NC-SA 4.0
+(non-commercial)**. It's why this feature is optional and why this tool must
+stay free/non-commercial as long as it's used. See
+[`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md) for the full
+citation list and design details.
+
+---
+
 ## Scientific scope
 
 This is a **visualization and intuition** tool. Affinity values are
-**user-entered**; the app uses **no** measured PET / mRNA data and no docking
-engine. The maps show **predicted localization and relative strength** — not
-measured receptor occupancy or in-vivo concentration.
+**user-entered**, and the app performs no docking. The maps show **predicted
+localization and relative strength** — not measured receptor occupancy or
+in-vivo concentration. Optionally, the map can be weighted by a real
+PET-derived receptor-density atlas (see
+[Receptor density weighting](#receptor-density-weighting)) — that weighting
+layer is real measured data, but affinity itself remains user-entered.
 
 **Region model** — all 28 regions render on a real, cited parcellation mask
 (`atlas_regions.py`): Harvard-Oxford cortical/subcortical atlases and Pauli et
