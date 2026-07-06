@@ -43,10 +43,14 @@ extend it toward measured, ground-truth-backed analysis.
 ## Scientific scope
 
 The tool is a **visualization aid**. Affinity values are entered by the user; the
-app does not read measured PET or mRNA data and does not perform docking. Rendered
-maps therefore represent **predicted localization and relative strength**, not
-measured receptor occupancy or in-vivo concentration. The kcal/mol → intensity
-mapping is a fixed, documented linear scale over `[-1, -15]` kcal/mol.
+app does not perform docking. Rendered maps represent **predicted localization
+and relative strength**, not measured receptor occupancy or in-vivo
+concentration. The kcal/mol → intensity mapping is a fixed, documented linear
+scale over `[-1, -15]` kcal/mol. Optionally, the map can additionally be
+weighted by a real, published in-vivo PET receptor-density atlas (see
+[`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md)) — that weighting
+is real measured data, but affinity itself is still user-entered, not
+measured or docking-derived.
 
 ## Roadmap (not yet implemented)
 
@@ -55,10 +59,22 @@ faked:
 
 1. **Molecule input.** Accept a molecule (e.g. SMILES) and compute standard
    descriptors (QED, physicochemical properties, a CNS desirability score) and
-   look up measured affinities from curated databases.
-2. **Measured ground truth.** Compare a predicted map against in-vivo PET
-   receptor-density atlases, and quantify agreement with
-   spatial-autocorrelation-preserving null models (spin tests).
+   look up measured affinities from curated databases. *Partially adjacent:*
+   `docking_import.py` now bulk-imports already-computed docking scores from
+   a CSV or an AutoDock Vina result file, removing the manual re-entry step -
+   but it doesn't compute anything from a molecule itself; that remains open.
+2. ~~**Measured ground truth.**~~ **Done, with a scoped caveat** — the map
+   can be weighted by real in-vivo PET receptor-density atlases (Hansen et
+   al. 2022, 18 receptors/transporters), and a "🧪 Spatial correspondence
+   test" quantifies agreement between the user's affinity pattern and real
+   receptor density via a 5,000-sample region-resampling permutation test
+   (`spatial_stats.py`). This is **not** a full vertex-level spin test
+   (Alexander-Bloch/Vasa/Burt) - those need a single registered
+   cortical-surface parcellation to rotate, which this app's mixed
+   cortical/subcortical/coordinate region set doesn't have. A true spin test
+   would require building that unified surface parcellation object first;
+   left as a further-future upgrade if the region model is ever
+   surface-unified. See `docs/RECEPTOR_WEIGHTING.md`.
 3. ~~**Full atlas coverage.**~~ **Done** — all 28 regions are now atlas-backed;
    see "Region model" below. Raphe Nuclei, Locus Coeruleus, and Cerebellum
    were dropped entirely (no standard, openly-fetchable atlas exists for any

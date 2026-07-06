@@ -31,6 +31,12 @@ jobs:
           path: ~/nilearn_data
           key: nilearn-data-v1
 
+      - name: Cache neuromaps receptor map downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/neuromaps-data
+          key: neuromaps-data-v1
+
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
@@ -38,7 +44,7 @@ jobs:
         run: ruff check .
 
       - name: Type check (mypy)
-        run: mypy app.py visualization.py brain_regions.py atlas_regions.py mni_space.py config.py styles.py models.py state.py interpretation.py ui_sidebar.py ui_views.py ai_agent.py ui_ai.py
+        run: mypy app.py visualization.py brain_regions.py atlas_regions.py receptor_atlas.py spatial_stats.py docking_import.py mni_space.py config.py styles.py models.py state.py interpretation.py ui_sidebar.py ui_views.py ai_agent.py ui_ai.py
 
       - name: Test (pytest)
         run: pytest tests/ -v

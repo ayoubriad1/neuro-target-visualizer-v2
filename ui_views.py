@@ -52,10 +52,14 @@ def render_subcortical_warning(regions: list[RegionEntry], view_mode: str):
 
 
 def render_main_view(regions: list[RegionEntry], view_mode: str, threshold: float,
-                     surf_mesh: str, mpl_cmap: str = "YlOrRd"):
+                     surf_mesh: str, mpl_cmap: str = "YlOrRd", receptor_weight: str | None = None):
     """Renders the selected view. Returns the matplotlib Figure behind it for
     the static views (so it can be offered as a PNG download), or None for
     the two HTML/WebGL-based interactive views (nothing static to export).
+
+    `receptor_weight`, if given, is passed straight through to
+    create_activation_volume - see visualization.create_activation_volume's
+    docstring for what it does to the resulting map.
     """
     pairs = [(r.name, r.normalized_intensity, r.coordinates) for r in regions]
 
@@ -64,7 +68,8 @@ def render_main_view(regions: list[RegionEntry], view_mode: str, threshold: floa
         loader.markdown(
             brain_loader_html("Building interactive 3D brain…"), unsafe_allow_html=True
         )
-        nifti_img = create_activation_volume(pairs, sigma=SURFACE_SIGMA)
+        nifti_img = create_activation_volume(pairs, sigma=SURFACE_SIGMA,
+                                             receptor_weight=receptor_weight)
         fig3d = interactive_surface_plotly(nifti_img, threshold=threshold, surf_mesh=surf_mesh,
                                            mpl_cmap=mpl_cmap)
         loader.empty()
@@ -76,7 +81,8 @@ def render_main_view(regions: list[RegionEntry], view_mode: str, threshold: floa
         loader.markdown(
             brain_loader_html("Building interactive slice viewer…"), unsafe_allow_html=True
         )
-        nifti_img = create_activation_volume(pairs, sigma=DEFAULT_SIGMA)
+        nifti_img = create_activation_volume(pairs, sigma=DEFAULT_SIGMA,
+                                             receptor_weight=receptor_weight)
         html = interactive_volume_html(nifti_img, threshold=threshold, mpl_cmap=mpl_cmap)
         loader.empty()
         st.caption("🖱️ Click or drag on any panel to move the cross-hair through "
@@ -88,18 +94,21 @@ def render_main_view(regions: list[RegionEntry], view_mode: str, threshold: floa
             brain_loader_html("Rendering 3D surface — this takes ~20 seconds…"),
             unsafe_allow_html=True,
         )
-        nifti_img = create_activation_volume(pairs, sigma=SURFACE_SIGMA)
+        nifti_img = create_activation_volume(pairs, sigma=SURFACE_SIGMA,
+                                             receptor_weight=receptor_weight)
         fig = plot_brain_surface(nifti_img, surf_mesh=surf_mesh, threshold=threshold,
                                  mpl_cmap=mpl_cmap)
     elif view_mode == "Glass Brain":
         loader.markdown(brain_loader_html("Rendering glass brain…"), unsafe_allow_html=True)
-        nifti_img = create_activation_volume(pairs, sigma=DEFAULT_SIGMA)
+        nifti_img = create_activation_volume(pairs, sigma=DEFAULT_SIGMA,
+                                             receptor_weight=receptor_weight)
         fig = plot_brain_glass(nifti_img, threshold=threshold, mpl_cmap=mpl_cmap)
     else:  # Stat Map (Slices)
         loader.markdown(
             brain_loader_html("Rendering anatomical slices…"), unsafe_allow_html=True
         )
-        nifti_img = create_activation_volume(pairs, sigma=DEFAULT_SIGMA)
+        nifti_img = create_activation_volume(pairs, sigma=DEFAULT_SIGMA,
+                                             receptor_weight=receptor_weight)
         fig = plot_brain_stat(nifti_img, threshold=threshold, mpl_cmap=mpl_cmap)
 
     loader.empty()
