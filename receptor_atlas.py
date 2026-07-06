@@ -96,7 +96,13 @@ def _fetch_receptor_volume(source: str, desc: str, res: str) -> np.ndarray:
     img = nib.load(path)
     resampled = resample_img(img, target_affine=MNI_AFFINE, target_shape=MNI_SHAPE,
                              interpolation="continuous")
-    data = np.asarray(resampled.get_fdata(), dtype=np.float64)
+    # Some neuromaps PET volumes ship as 4D with a trailing singleton time/
+    # frame axis, so the resampled array comes back as (91,109,91,1) rather
+    # than a bare 3D volume; squeeze it so the elementwise density weighting
+    # downstream (visualization._compute_activation_array) gets a clean
+    # (91,109,91) grid instead of raising a broadcast error against the 3D
+    # activation volume.
+    data = np.squeeze(np.asarray(resampled.get_fdata(), dtype=np.float64))
     data = np.nan_to_num(data, nan=0.0, neginf=0.0, posinf=0.0)
     data = np.clip(data, 0.0, None)
     peak = data.max()

@@ -8,6 +8,8 @@ receptor is actually fetched end-to-end here - the rest of the module
 (name/citation coverage, unknown-name handling) is tested without a network
 call.
 """
+import pytest
+
 from mni_space import MNI_SHAPE
 from receptor_atlas import (
     RECEPTOR_CITATIONS,
@@ -42,6 +44,19 @@ def test_get_receptor_density_shape_and_range():
     # app's MNI152 2mm grid and normalized to [0, 1].
     density = get_receptor_density("D2 (dopamine receptor)")
     assert density.shape == MNI_SHAPE
+    assert density.ndim == 3
     assert density.min() >= 0.0
     assert density.max() <= 1.0 + 1e-9
     assert density.max() > 0.0
+
+
+@pytest.mark.parametrize("name", RECEPTOR_NAMES)
+def test_every_receptor_density_is_3d_grid(name):
+    # Regression guard: some neuromaps PET volumes ship as 4D (91,109,91,1)
+    # with a trailing singleton axis. Every map must come back as a bare 3D
+    # (91,109,91) grid - a 4D one silently broke the elementwise density
+    # weighting in visualization._compute_activation_array (broadcast error).
+    # Fetches all 18 maps over the network on first run; cached afterwards.
+    density = get_receptor_density(name)
+    assert density.shape == MNI_SHAPE
+    assert density.ndim == 3
