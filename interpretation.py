@@ -13,6 +13,7 @@ from atlas_regions import ATLAS_CITATIONS, ATLAS_REGIONS, get_atlas_source
 from brain_regions import get_region_names
 from config import DEFAULT_SIGMA, KCAL_MAX, KCAL_MIN, SURFACE_SIGMA
 from connectome import propagate_effect
+from connectome_viz import build_propagation_animation
 from models import RegionEntry, strength_label
 from receptor_atlas import HANSEN_2022_CITATION, get_receptor_citation
 from spatial_stats import MIN_REGIONS, compute_spatial_correlation
@@ -205,6 +206,18 @@ def render_connectome_propagation(regions: list[RegionEntry]):
         "real (not simulated) functional connectivity."
     )
     st.markdown(text)
+
+    fig = build_propagation_animation(regions)
+    if fig is not None:
+        st.caption(
+            "🔵 Animated network view — each node is one atlas region at its real MNI "
+            "location; the gold-ringed node(s) are what you selected. Press **▶ Play** "
+            "or drag the **Step** slider to watch the estimated signal spread. "
+            "**\"Step\" is an abstract diffusion iteration, not real elapsed time** - "
+            "it has no defined relationship to seconds, minutes, or a real "
+            "pharmacokinetic timescale."
+        )
+        st.plotly_chart(fig, width="stretch")
 
 
 def _renderer_versions() -> str:

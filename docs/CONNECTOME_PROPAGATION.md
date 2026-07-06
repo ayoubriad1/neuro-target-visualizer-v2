@@ -80,6 +80,45 @@ hand-tuned or opaque.
   so a linear estimate can never be visually mistaken for part of the same
   measurement.
 
+## Animated network view (connectome_viz.py)
+
+Below the propagated-region table, an animated Plotly figure shows the
+estimated signal spreading step by step, as a **network graph in brain
+space** rather than another anatomical brain render:
+
+- One node per atlas region, placed at its real MNI centroid
+  (`connectome.region_centroids`, the mask-weighted center of mass).
+- Edges drawn between regions with connectivity above 0.3, as a static
+  "wiring" backdrop.
+- Node size and color animate through each step of
+  `connectome.simulate_diffusion` - a **random-walk-with-restart** model
+  (the same family of model used for e.g. tau-PET spreading simulations in
+  the literature): at each discrete step, a region's current signal spreads
+  to its positively-connected neighbors in proportion to connection
+  strength, while a restart term keeps re-injecting the original
+  directly-entered affinities at their source region(s) so the signal
+  doesn't just dilute away to nothing.
+- A **cool blue/teal colorscale**, deliberately different from the warm
+  red used everywhere else for directly-entered/measured affinity, plus a
+  gold ring around the directly-selected source region(s) - both exist so
+  this view can never be visually mistaken for a measurement.
+
+**"Step" is not real time.** It's a discrete iteration count in an abstract
+diffusion model - it has no established mapping to seconds, minutes, or any
+real pharmacokinetic timescale. The UI states this explicitly next to the
+Play/step-slider controls. The simulation typically converges to a stable
+pattern within a handful of steps (expected for a restart-based diffusion
+on a small, densely-connected 28-node graph) - most of the visible "spread"
+happens in the first 2-3 steps, then the network settles.
+
+**Known simplification**: several atlas regions (e.g. "Striatum (Putamen)")
+represent a **bilateral** mask (left + right hemisphere combined, matching
+this app's systemic-binding assumption elsewhere). Such a region's centroid
+falls near the midline (x ≈ 0) even though the actual left and right
+instances sit well off to either side - the node position is the average
+location of a bilateral mask, not a claim that the structure itself sits at
+the midline.
+
 ## Adding more data / improving this later
 
 - Re-run `scripts/compute_connectivity_matrix.py` with more subjects (up to

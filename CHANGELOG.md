@@ -263,6 +263,16 @@ binding all three directly).
   explicit "linear estimate, not a simulation" caveat and a percentage scale
   documented as non-comparable to the directly-entered affinities.
 - Full methodology and caveats in [`docs/CONNECTOME_PROPAGATION.md`](docs/CONNECTOME_PROPAGATION.md).
+- **Animated network view** ([`connectome_viz.py`](connectome_viz.py)): a
+  Play/step-slider Plotly animation of `connectome.simulate_diffusion` (a
+  random-walk-with-restart multi-step diffusion over the same connectivity
+  matrix) - one node per atlas region at its real MNI centroid, edges above
+  a connectivity threshold, node size/color animating through each step. A
+  cool blue/teal palette (vs. the warm red used for measured affinity
+  everywhere else) and a gold ring on the directly-selected source
+  region(s) keep it visually unmistakable as an estimate, not measured
+  data. Explicitly labeled: **"step" is an abstract diffusion iteration,
+  not real elapsed time.**
 
 ---
 

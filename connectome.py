@@ -17,9 +17,13 @@ doesn't mean.
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import streamlit as st
+from scipy import ndimage
 
+from atlas_regions import get_region_mask
+from mni_space import MNI_AFFINE
 from models import RegionEntry
 
 # Resolved relative to this file, not the process's current working
@@ -91,3 +95,75 @@ def propagate_effect(regions: list[RegionEntry], top_n: int = 8) -> list[Propaga
         PropagatedRegion(name=name, score=100.0 * value / peak)
         for name, value in ranked[:top_n] if value > 0
     ]
+
+
+@st.cache_resource(show_spinner=False)
+def region_centroids() -> dict[str, tuple[float, float, float]]:
+    """MNI (mm) centroid of every region in the connectivity matrix, for
+    plotting each region as a single node in the propagation-animation
+    network view. Computed as the mask-weighted center of mass in voxel
+    space, then converted to world (mm) coordinates via this app's MNI152
+    2mm affine - a single representative point, not the region's full
+    extent (matches how the animation renders it: one node per region).
+    """
+    matrix = _load_matrix()
+    centroids = {}
+    for name in matrix.index:
+        mask = get_region_mask(name)
+        if mask is None:
+            continue
+        i, j, k = ndimage.center_of_mass(mask)
+        x, y, z = MNI_AFFINE.dot([i, j, k, 1.0])[:3]
+        centroids[name] = (float(x), float(y), float(z))
+    return centroids
+
+
+_DEFAULT_N_STEPS = 8
+_DEFAULT_RESTART_PROB = 0.5
+
+
+def simulate_diffusion(
+    regions: list[RegionEntry], n_steps: int = _DEFAULT_N_STEPS,
+    restart_prob: float = _DEFAULT_RESTART_PROB,
+) -> list[dict[str, float]]:
+    """A discrete-step random-walk-with-restart diffusion over the real
+    functional connectivity graph: at each step, signal already at a region
+    spreads to its positively-connected neighbors (weighted by connection
+    strength, row-normalized so each region distributes at most its own
+    current signal), while `restart_prob` keeps re-injecting the original
+    directly-entered affinities at their source regions - the standard
+    formulation used for spreading-process modeling on brain networks
+    (e.g. Abdelnour et al. 2014's linear diffusion model; the same
+    restart-based idea as personalized PageRank).
+
+    Returns a list of `n_steps + 1` dicts (step 0 = the raw input, i.e. only
+    the directly-selected regions, at their normalized_intensity/100 value;
+    each subsequent step is one diffusion iteration), each mapping every
+    region name in the connectivity matrix to its current activation level.
+    These are **relative units from an abstract iterative model - not
+    seconds/minutes and not a validated pharmacokinetic timescale.** Returns
+    a list containing only the all-zero step 0 if no selected region has a
+    matrix row.
+    """
+    matrix = _load_matrix()
+    names = list(matrix.index)
+    index = {name: i for i, name in enumerate(names)}
+    n = len(names)
+
+    x0 = np.zeros(n, dtype=np.float64)
+    for r in regions:
+        if r.coordinates is None and r.name in index:
+            x0[index[r.name]] = r.normalized_intensity / 100.0
+
+    w_pos = np.clip(matrix.values, 0.0, None)
+    np.fill_diagonal(w_pos, 0.0)
+    row_sums = w_pos.sum(axis=1, keepdims=True)
+    transition = np.divide(w_pos, row_sums, out=np.zeros_like(w_pos), where=row_sums > 0)
+
+    steps = [x0]
+    x = x0
+    for _ in range(n_steps):
+        x = (1.0 - restart_prob) * (transition.T @ x) + restart_prob * x0
+        steps.append(x)
+
+    return [dict(zip(names, step, strict=True)) for step in steps]

@@ -263,7 +263,8 @@ neuroviz-v2/
 ├── receptor_atlas.py      # 18 PET receptor/transporter density maps (Hansen et al. 2022, via neuromaps)
 ├── spatial_stats.py       # spatial correspondence permutation test (affinity vs. receptor density)
 ├── docking_import.py      # CSV bulk import + AutoDock Vina result score extraction
-├── connectome.py          # circuit-propagation estimate (real functional connectivity)
+├── connectome.py          # circuit-propagation estimate + diffusion simulation (real functional connectivity)
+├── connectome_viz.py      # animated Plotly network view for the diffusion simulation
 ├── mni_space.py           # shared MNI152 2mm grid constants
 ├── requirements.txt       # Python dependencies (lower-bound pins)
 ├── requirements.lock.txt  # exact, hash-verified pins for reproducibility
@@ -439,6 +440,18 @@ region and is **not** comparable to the directly-entered affinity
 percentages elsewhere in the app. It's rendered as its own section,
 deliberately never blended into the 3-D brain heatmap, so a computed
 estimate can't be mistaken for part of the same measurement.
+
+Below the table, an **animated network view** shows a multi-step version of
+the same idea: a Play/step-slider Plotly animation (`connectome_viz.py`)
+where each atlas region is a node at its real MNI location, connected by
+real functional-connectivity edges, with node size/color spreading outward
+step by step (a random-walk-with-restart diffusion,
+`connectome.simulate_diffusion`). It uses a cool blue/teal palette
+(different from the warm red used for measured affinity) and rings the
+directly-selected source region(s) in gold, specifically so it reads as an
+estimate, not a measurement. **"Step" is an abstract diffusion iteration,
+not real elapsed time** - it has no defined relationship to seconds,
+minutes, or a real pharmacokinetic timescale.
 
 ---
 
