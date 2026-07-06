@@ -6,6 +6,7 @@ from interpretation import (
     render_export_buttons,
     render_interpretation,
     render_methods_panel,
+    render_spatial_test,
 )
 from state import get_regions, init_state
 from styles import inject_theme, render_hero_header
@@ -42,6 +43,7 @@ if regions:
     fig = render_main_view(regions, view_mode, threshold, surf_mesh, mpl_cmap, receptor_weight)
     render_affinity_summary(regions)
     render_interpretation(regions)
+    render_spatial_test(regions, receptor_weight)
     render_ai_interpretation(regions, ai_config, receptor_weight)
     render_methods_panel(threshold, surf_mesh, mpl_cmap, receptor_weight)
     render_export_buttons(fig, regions, threshold, surf_mesh, mpl_cmap, receptor_weight)

@@ -14,6 +14,7 @@ from brain_regions import get_region_names
 from config import DEFAULT_SIGMA, KCAL_MAX, KCAL_MIN, SURFACE_SIGMA
 from models import RegionEntry, strength_label
 from receptor_atlas import HANSEN_2022_CITATION, get_receptor_citation
+from spatial_stats import MIN_REGIONS, compute_spatial_correlation
 
 
 def render_affinity_summary(regions: list[RegionEntry]):
@@ -100,6 +101,63 @@ def render_interpretation(regions: list[RegionEntry]):
     st.divider()
     st.subheader("Interpretation")
     st.markdown(_interpretation_text(regions))
+
+
+def render_spatial_test(regions: list[RegionEntry], receptor_weight: str | None):
+    """Only renders when receptor weighting is active AND at least
+    MIN_REGIONS selected regions have a usable density value - silently
+    does nothing otherwise (e.g. too few regions, or weighting disabled),
+    rather than show an empty/misleading section.
+    """
+    text = _spatial_test_text(regions, receptor_weight)
+    if not text:
+        return
+    st.divider()
+    st.subheader("🧪 Spatial correspondence test")
+    st.caption(
+        f"Only shown when receptor weighting is active and at least "
+        f"{MIN_REGIONS} selected regions have a usable density value."
+    )
+    st.markdown(text)
+
+
+def _spatial_test_text(regions: list[RegionEntry], receptor_weight: str | None) -> str:
+    """Empty string if there's nothing to report (no weighting active, or
+    too few regions with a usable density value) - callers should skip
+    rendering the section entirely in that case rather than show an empty
+    header.
+    """
+    if receptor_weight is None:
+        return ""
+    result = compute_spatial_correlation(tuple(regions), receptor_weight)
+    if result is None:
+        return ""
+
+    direction = "positive" if result.r > 0 else "negative"
+    strength = "strong" if abs(result.r) >= 0.5 else "moderate" if abs(result.r) >= 0.3 else "weak"
+    significance = (
+        f"statistically distinguishable from a random set of {result.n_regions} atlas "
+        f"regions (p = {result.p_value:.3f})"
+        if result.p_value < 0.05
+        else f"not statistically distinguishable from a random set of {result.n_regions} "
+             f"atlas regions (p = {result.p_value:.3f})"
+    )
+    return f"""
+**Spatial correspondence with {result.receptor_name}** — across your
+**{result.n_regions}** selected regions with a usable density value, the
+correlation between normalized affinity and real receptor density is
+**r = {result.r:.2f}** ({strength} {direction} correspondence), which is
+{significance} from {result.n_permutations:,} permutations.
+
+*Methodology*: this is a **region-resampling permutation test**, not a
+vertex-level "spin test" — the null distribution comes from swapping in
+random atlas regions (same count as your selection) for the ones you chose,
+not from a spatial-autocorrelation-preserving rotation of a cortical surface
+parcellation (which this app's mixed cortical/subcortical region set has no
+single unified object for). It answers "is this stronger than a random
+same-size set of atlas regions?" — a narrower, still meaningful question.
+With only {result.n_regions} data points, treat both r and p as indicative,
+not conclusive."""
 
 
 def _renderer_versions() -> str:
@@ -203,6 +261,8 @@ def build_report_markdown(regions: list[RegionEntry], threshold: float, surf_mes
     methods/provenance) for the "Download report" button in app.py.
     """
     generated = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    spatial_text = _spatial_test_text(regions, receptor_weight)
+    spatial_section = f"\n## Spatial Correspondence Test\n{spatial_text}\n" if spatial_text else ""
     return f"""# Neuro-Target Affinity Visualizer — Report
 Generated {generated}
 
@@ -212,7 +272,7 @@ Generated {generated}
 
 ## Interpretation
 {_interpretation_text(regions)}
-
+{spatial_section}
 ## Methods & Provenance
 {_methods_text(threshold, surf_mesh, mpl_cmap, receptor_weight)}
 """

@@ -34,3 +34,32 @@ def test_build_report_markdown_no_receptor_note_by_default():
     regions = [make_region_entry("Thalamus", -9.2)]
     report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6")
     assert "Receptor density weighting" not in report
+
+
+def test_build_report_markdown_includes_spatial_test_with_enough_regions():
+    regions = [
+        make_region_entry("Thalamus", -12.0),
+        make_region_entry("Hippocampus", -8.0),
+        make_region_entry("Amygdala", -4.0),
+    ]
+    report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6",
+                                   receptor_weight="D2 (dopamine receptor)")
+    assert "Spatial Correspondence Test" in report
+    assert "region-resampling permutation test" in report
+
+
+def test_build_report_markdown_omits_spatial_test_without_receptor_weight():
+    regions = [
+        make_region_entry("Thalamus", -12.0),
+        make_region_entry("Hippocampus", -8.0),
+        make_region_entry("Amygdala", -4.0),
+    ]
+    report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6")
+    assert "Spatial Correspondence Test" not in report
+
+
+def test_build_report_markdown_omits_spatial_test_below_min_regions():
+    regions = [make_region_entry("Thalamus", -12.0), make_region_entry("Hippocampus", -8.0)]
+    report = build_report_markdown(regions, threshold=0.08, surf_mesh="fsaverage6",
+                                   receptor_weight="D2 (dopamine receptor)")
+    assert "Spatial Correspondence Test" not in report

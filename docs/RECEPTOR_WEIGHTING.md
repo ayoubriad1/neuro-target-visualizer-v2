@@ -72,6 +72,44 @@ in the Methods panel/sidebar caption **and** Hansen et al. 2022.
   `receptor_atlas.py` if you want to add an alternate tracer as a second
   option for the same receptor.
 
+## Spatial correspondence test (spatial_stats.py)
+
+Once a receptor weighting is active, a natural follow-up question is: *does
+the user's own affinity pattern actually line up with where this receptor
+really is, any more than chance would predict?* `spatial_stats.py` answers a
+scoped version of that question.
+
+**What it computes**: for each selected region with a usable density value
+(the mean receptor density within its atlas mask, or the density at the
+exact voxel for a coordinate-based entry), it correlates that density
+against the region's normalized affinity (Pearson r). It then builds a null
+distribution of 5,000 samples by swapping in random same-size sets of atlas
+regions in place of the user's selection, and reports a two-sided
+permutation p-value: the fraction of null-sample correlations at least as
+extreme as the observed one.
+
+**Why not a real "spin test"**: the standard spatial-null approach in this
+literature (Alexander-Bloch et al. 2018, Vasa et al. 2018, Burt et al. 2020)
+rotates a spherical projection of a *registered cortical-surface
+parcellation* to generate nulls that preserve spatial autocorrelation. That
+requires a single, unified parcellation object with known vertex/parcel
+coordinates on a sphere - this app's region set mixes Harvard-Oxford
+cortical labels, Pauli et al. subcortical nuclei, and arbitrary exact MNI
+coordinates, with no such unified surface object. Building one just for
+this feature would be a much larger undertaking (and subcortical structures
+aren't on the cortical sphere at all, so a pure spin test couldn't include
+them anyway). The region-resampling permutation implemented here needs
+nothing beyond what's already fetched (atlas masks + receptor density), at
+the cost of testing a narrower question: "stronger than a random same-size
+region set" rather than "stronger than any spatially-plausible
+rearrangement." Both the UI and the downloadable report state this
+explicitly rather than imply a full spin test occurred.
+
+**Determinism**: the permutation RNG uses a fixed seed
+(`spatial_stats._PERMUTATION_SEED`), so the reported r/p don't change across
+reruns for the same region selection and receptor - reproducibility mattered
+more here than sampling a fresh null on every rerun.
+
 ## Adding another receptor/transporter
 
 1. Find the `source`/`desc`/`res` (or `den`) values for the tracer you want

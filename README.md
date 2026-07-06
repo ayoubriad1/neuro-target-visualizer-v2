@@ -47,6 +47,8 @@ The model is fully rotatable — the same map viewed from above:
 - [Documentation](#documentation)
 - [AI Interpretation](#ai-interpretation)
 - [Receptor density weighting](#receptor-density-weighting)
+- [Importing docking results](#importing-docking-results)
+- [Spatial correspondence test](#spatial-correspondence-test)
 - [Scientific scope](#scientific-scope)
 - [Supported brain regions](#supported-brain-regions)
 - [Troubleshooting](#troubleshooting)
@@ -80,6 +82,15 @@ The model is fully rotatable — the same map viewed from above:
   18 real, published PET-derived receptor/transporter density maps (Hansen et
   al. 2022), instead of painting a whole region uniformly. See
   [Receptor density weighting](#receptor-density-weighting) below.
+- **Import docking results** — bulk-add regions from a CSV/TSV of docking
+  scores instead of re-typing them one by one, or pull the best score
+  straight out of an AutoDock Vina result file. See
+  [Importing docking results](#importing-docking-results) below.
+- **Spatial correspondence test** — when receptor weighting is active and
+  at least 3 selected regions have a usable density value, a permutation
+  test reports whether your affinity map correlates with the real receptor
+  density more than a random set of atlas regions would (with a p-value).
+  See [Spatial correspondence test](#spatial-correspondence-test) below.
 - Clean, bright, brain-inspired UI. Runs entirely locally.
 
 | 3-D Surface | Glass Brain | Stat Map |
@@ -244,6 +255,8 @@ neuroviz-v2/
 ├── brain_regions.py       # illustrative-point fallback (currently empty - see below) + merged name list
 ├── atlas_regions.py       # 28/28 regions → real atlas masks (Harvard-Oxford, Pauli 2017)
 ├── receptor_atlas.py      # 18 PET receptor/transporter density maps (Hansen et al. 2022, via neuromaps)
+├── spatial_stats.py       # spatial correspondence permutation test (affinity vs. receptor density)
+├── docking_import.py      # CSV bulk import + AutoDock Vina result score extraction
 ├── mni_space.py           # shared MNI152 2mm grid constants
 ├── requirements.txt       # Python dependencies (lower-bound pins)
 ├── requirements.lock.txt  # exact, hash-verified pins for reproducibility
@@ -337,6 +350,57 @@ serotonin (5-HT1a/1b/2a/4, 5-HTT), acetylcholine (VAChT, α4β2, M1), glutamate
 stay free/non-commercial as long as it's used. See
 [`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md) for the full
 citation list and design details.
+
+---
+
+## Importing docking results
+
+Instead of clicking **➕ Add Region** by hand for every result, the sidebar's
+**📥 Import docking results (optional)** expander (at the very top) accepts:
+
+1. **A CSV/TSV batch** — one row per region: a `region` column (or `name`)
+   and a `kcal` column (`kcal_mol`/`affinity` also accepted), e.g.:
+   ```csv
+   region,kcal
+   Thalamus,-9.2
+   Hippocampus,-6.5
+   ```
+   Add `x,y,z` columns instead of (or alongside) `region` to bulk-import
+   exact MNI coordinates — same semantics as the sidebar's advanced input
+   mode. Invalid rows (unknown region name, unparseable or non-negative
+   affinity) are reported individually and skipped rather than failing the
+   whole import; valid rows are previewed before you confirm with
+   **➕ Import N region(s)**.
+2. **A single AutoDock Vina result file** (the `.pdbqt` pose output, or the
+   plain-text log/table Vina prints) — the best (top-ranked) score is
+   extracted and prefilled into the **Binding Affinity** field below, so you
+   don't have to retype it. A Vina score has no inherent brain-region
+   association by itself, so you still pick the matching region (or
+   receptor, for [weighting](#receptor-density-weighting)) yourself — this
+   only removes the copy/retype step, not that judgment call.
+
+---
+
+## Spatial correspondence test
+
+When [receptor weighting](#receptor-density-weighting) is active and at
+least 3 of your selected regions have a usable density value, a **"🧪
+Spatial correspondence test"** section appears below the interpretation: the
+Pearson correlation between your regions' normalized affinity and the real
+receptor density in each region, plus a permutation-based p-value answering
+*"is this stronger than a random same-size set of atlas regions?"*
+
+**This is not a full vertex-level "spin test"** (Alexander-Bloch/Vasa/Burt) —
+those rotate a spherical projection of a registered cortical-surface
+parcellation to build a spatial-autocorrelation-preserving null, which needs
+a single unified surface parcellation object this app's mixed
+cortical+subcortical atlas set doesn't have. Instead it's a
+**region-resampling permutation test**: the null distribution comes from
+swapping in 5,000 random same-size sets of atlas regions in place of your
+selection. It's a narrower, still meaningful question than a true spin test
+would answer — with a small number of regions, treat both the correlation
+and the p-value as indicative, not conclusive. Full methodology in
+[`docs/RECEPTOR_WEIGHTING.md`](docs/RECEPTOR_WEIGHTING.md).
 
 ---
 

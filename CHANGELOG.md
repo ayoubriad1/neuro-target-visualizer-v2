@@ -197,6 +197,46 @@ very different places for each.
   for the full design write-up, citation requirements, and how to add another
   receptor/tracer.
 
+## Importing docking results
+
+**Problem**: every region had to be added one at a time through the sidebar
+form - the single biggest friction point for anyone with an actual
+virtual-screening or docking run's worth of results (tens of targets) to
+visualize, rather than a handful typed in for a demo.
+
+- New module [`docking_import.py`](docking_import.py): `parse_csv` for
+  bulk `region,kcal` (+ optional `x,y,z`) rows, with per-row validation
+  (unknown region names, non-negative or unparseable affinities) reported
+  individually rather than failing or silently dropping the whole batch;
+  `parse_vina_score` extracts the best pose's affinity from either a raw
+  AutoDock Vina `.pdbqt` output or its plain-text results table.
+- New sidebar section, **"📥 Import docking results (optional)"**: a CSV/TSV
+  uploader previews valid rows and imports them in one click, and a Vina
+  file uploader prefills the "Binding Affinity" field with the extracted
+  score so it doesn't have to be retyped (the user still assigns it to a
+  region, since a docking score alone has no brain-region association).
+
+## Spatial correspondence test
+
+**Problem**: receptor weighting shows *where* a receptor is dense, but gave
+no way to ask the natural follow-up - does the user's own affinity pattern
+actually correspond to that density any more than chance would?
+
+- New module [`spatial_stats.py`](spatial_stats.py): correlates each
+  selected region's normalized affinity against the real receptor density
+  in that region (mean within the atlas mask, or the value at the exact
+  voxel for coordinate-based entries), then runs a 5,000-sample
+  region-resampling permutation test (swapping in random same-size sets of
+  atlas regions) to report a p-value. Explicitly **not** a vertex-level
+  "spin test" (no unified surface parcellation to rotate, given this app's
+  mixed cortical/subcortical/coordinate region set) - documented as such in
+  the UI, the downloadable report, and `docs/RECEPTOR_WEIGHTING.md`.
+- New results section, **"🧪 Spatial correspondence test"**: only appears
+  when receptor weighting is active and at least 3 selected regions have a
+  usable density value; included in the downloadable report too.
+- Deterministic (fixed permutation seed) so the reported r/p don't jitter
+  across unrelated reruns.
+
 ---
 
 ## Numbers
