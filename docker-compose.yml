@@ -1,0 +1,16 @@
+services:
+  neuroviz:
+    build: .
+    ports:
+      - "7860:7860"
+    volumes:
+      # Persist the nilearn dataset cache across container restarts/rebuilds
+      - nilearn-cache:/home/appuser/nilearn_data
+      # Persist the neuromaps PET receptor map cache (see receptor_atlas.py)
+      - neuromaps-cache:/home/appuser/neuromaps-data
+    environment:
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+volumes:
+  nilearn-cache:
+  neuromaps-cache:
